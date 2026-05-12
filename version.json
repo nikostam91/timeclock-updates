@@ -1,14 +1,1 @@
-{
-  "version": "2.0.0",
-  "releaseDate": "2026-05-12",
-  "minimumVersion": "1.0.0",
-  "updateUrl": "https://YOUR_USERNAME.github.io/timeclock-updates/latest.html",
-  "changelogUrl": "https://YOUR_USERNAME.github.io/timeclock-updates/changelog.json",
-  "announcementsUrl": "https://YOUR_USERNAME.github.io/timeclock-updates/announcements.json",
-  "isCritical": false,
-  "changelog": [
-    "Βελτιωμένη απόδοση",
-    "Διόρθωση σφαλμάτων",
-    "Νέα λειτουργία ανακοινώσεων"
-  ]
-}
+{"version":"2.1.0","releaseDate":"2026-05-12","minimumVersion":"1.0.0","updateUrl":"https://nikostam91.github.io/timeclock-updates/latest.html","changelogUrl":"https://nikostam91.github.io/timeclock-updates/changelog.json","announcementsUrl":"https://nikostam91.github.io/timeclock-updates/announcements.json","isCritical":false,"changelog":["TEST"]}
