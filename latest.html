@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Σύστημα Χτυπήματος Κάρτας - Pro Edition</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1300px; margin: 0 auto; }
+        .header { text-align: center; color: white; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .company-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 20px;
+            border-radius: 20px;
+            margin-top: 10px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .form-group { margin-bottom: 15px; position: relative; }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+        .button-group { display: flex; gap: 10px; margin-top: 20px; }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-clock-in { background: #27ae60; color: white; }
+        .btn-clock-in:hover:not(:disabled) { background: #229954; transform: translateY(-2px); }
+        .btn-clock-out { background: #e74c3c; color: white; }
+        .btn-clock-out:hover:not(:disabled) { background: #c0392b; transform: translateY(-2px); }
+        .btn-delete {
+            background: #95a5a6;
+            color: white;
+            width: 80px;
+            padding: 5px;
+            font-size: 0.85em;
+        }
+        .btn-delete:hover { background: #7f8c8d; }
+        .btn-export {
+            background: #3498db;
+            color: white;
+            width: 100%;
+            padding: 15px;
+            font-size: 1.05em;
+        }
+        .btn-export:hover { background: #2980b9; }
+        .btn-add-employee {
+            background: #9b59b6;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-add-employee:hover { background: #8e44ad; }
+        .btn-backup { background: #16a085; color: white; flex: 1; }
+        .btn-backup:hover { background: #138d75; }
+        .btn-restore { background: #f39c12; color: white; flex: 1; }
+        .btn-restore:hover { background: #e67e22; }
+        .employee-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .employee-item:hover { background: #e8f0ff; }
+        .employee-item-name { flex: 1; }
+        .employee-item-delete {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        .employee-item-delete:hover { background: #c0392b; }
+        .records-section { grid-column: 1 / -1; }
+        .records-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .records-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        .records-table td { padding: 12px; border-bottom: 1px solid #eee; }
+        .records-table tr:hover { background: #f5f5f5; }
+        .time-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .badge-in { background: #d4edda; color: #155724; }
+        .badge-out { background: #f8d7da; color: #721c24; }
+        .summary-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .summary-info h3 { color: #333; font-size: 1em; margin-bottom: 5px; }
+        .summary-info .hours { font-size: 1.6em; font-weight: bold; color: #667eea; }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-in {
+            background: #27ae60;
+            box-shadow: 0 0 8px #27ae60;
+            animation: pulse 2s infinite;
+        }
+        .status-out { background: #95a5a6; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 8px #27ae60; }
+            50% { box-shadow: 0 0 16px #27ae60; }
+            100% { box-shadow: 0 0 8px #27ae60; }
+        }
+        .no-data { text-align: center; padding: 30px; color: #999; }
+        .filter-section { margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
+        .filter-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: end; }
+        .filter-row input { padding: 8px; font-size: 0.9em; }
+        .filter-row button { padding: 8px; font-size: 0.9em; background: #34495e; color: white; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast {
+            background: white;
+            color: #333;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 280px;
+            animation: slideIn 0.3s ease;
+        }
+        .toast.success { border-left: 4px solid #27ae60; }
+        .toast.error { border-left: 4px solid #e74c3c; }
+        .toast.warning { border-left: 4px solid #f39c12; }
+        .toast.info { border-left: 4px solid #3498db; }
+        .toast-icon { font-size: 1.5em; }
+        .toast.fade-out { animation: slideOut 0.3s ease forwards; }
+        @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }
+        .working-now {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .working-now h3 { margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .working-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .working-chip {
+            background: rgba(255,255,255,0.25);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* ========== LICENSE SCREEN ========== */
+        #licenseScreen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+        }
+        .license-card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .license-card h2 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 1.8em;
+        }
+        .license-card p {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .license-card textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            min-height: 100px;
+            resize: vertical;
+        }
+        .license-card button {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        .license-card button:hover { background: #5568d3; }
+
+        /* ========== SPLASH SCREEN ========== */
+        #splashScreen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 99998;
+            color: white;
+            text-align: center;
+            transition: opacity 0.5s;
+        }
+        #splashScreen.fade-out { opacity: 0; pointer-events: none; }
+        .splash-logo {
+            font-size: 5em;
+            margin-bottom: 20px;
+            animation: bounceIn 0.8s;
+        }
+        .splash-title {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: bold;
+            animation: fadeInUp 1s;
+        }
+        .splash-company {
+            font-size: 1.8em;
+            margin-bottom: 30px;
+            padding: 10px 30px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+            animation: fadeInUp 1.3s;
+        }
+        .splash-subtitle {
+            font-size: 1em;
+            opacity: 0.8;
+            animation: fadeInUp 1.6s;
+        }
+        .splash-loader {
+            margin-top: 30px;
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes fadeInUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ========== EXPIRATION WARNING ========== */
+        .expiry-warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #f39c12;
+        }
+        .expiry-warning.urgent {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #e74c3c;
+        }
+
+        /* ========== UPDATE BANNER ========== */
+        .update-banner {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            animation: slideDown 0.5s ease;
+        }
+        .update-banner.critical {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+        .update-banner-text { flex: 1; }
+        .update-banner-text h3 { margin-bottom: 5px; }
+        .update-banner-actions { display: flex; gap: 10px; }
+        .update-banner button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            background: white;
+            color: #27ae60;
+        }
+        .update-banner.critical button { color: #c0392b; }
+        .update-banner button:hover { transform: translateY(-2px); }
+        .update-banner button.secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        @keyframes slideDown {
+            from { transform: translateY(-30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* ========== ANNOUNCEMENTS ========== */
+        .announcement {
+            background: white;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+        }
+        .announcement.warning { border-left-color: #f39c12; }
+        .announcement.urgent { border-left-color: #e74c3c; background: #fff5f5; }
+        .announcement-content { flex: 1; }
+        .announcement-content h4 {
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .announcement-content p {
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .announcement-date {
+            font-size: 0.85em;
+            color: #999;
+        }
+        .announcement-close {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #999;
+            padding: 0 10px;
+        }
+        .announcement-close:hover { color: #333; }
+
+        /* ========== UPDATE MODAL ========== */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 99997;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-content h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        .modal-changelog {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .modal-changelog ul { padding-left: 20px; }
+        .modal-changelog li { margin: 5px 0; }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .modal-buttons button { flex: 1; }
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .main-content { grid-template-columns: 1fr; }
+            .records-section { grid-column: 1; }
+            .header h1 { font-size: 1.8em; }
+            .button-group { flex-direction: column; }
+            .filter-row { grid-template-columns: 1fr; }
+            .splash-title { font-size: 1.8em; }
+            .splash-company { font-size: 1.3em; }
+            .update-banner { flex-direction: column; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ========== SPLASH SCREEN ========== -->
+    <div id="splashScreen" style="display: none;">
+        <div class="splash-logo">⏱️</div>
+        <div class="splash-title">Σύστημα Χτυπήματος Κάρτας</div>
+        <div class="splash-company" id="splashCompany">--</div>
+        <div class="splash-subtitle">Pro Edition - Licensed Software</div>
+        <div class="splash-loader"></div>
+    </div>
+
+    <!-- ========== LICENSE SCREEN ========== -->
+    <div id="licenseScreen">
+        <div class="license-card">
+            <h2>🔐 Ενεργοποίηση Άδειας</h2>
+            <p>Παρακαλώ εισάγετε το License Key που λάβατε:</p>
+            <textarea id="licenseInput" placeholder="Επικολλήστε το License Key εδώ..."></textarea>
+            <button onclick="activateLicense()">✓ Ενεργοποίηση</button>
+            <p style="font-size: 0.85em; margin-top: 15px; color: #999;">
+                Δεν έχετε License Key; Επικοινωνήστε με τον πάροχό σας.
+            </p>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ========== MAIN APP ========== -->
+    <div class="container" id="mainApp" style="display: none;">
+        <div class="header">
+            <h1>⏱️ Σύστημα Χτυπήματος Κάρτας</h1>
+            <div class="company-badge" id="companyBadge">--</div>
+        </div>
+
+        <div id="expiryWarning"></div>
+        <div id="updateBanner"></div>
+        <div id="announcementsContainer"></div>
+
+        <div class="main-content">
+            <div class="card">
+                <h2>Νέο Χτύπημα Κάρτας</h2>
+                <div id="workingNow" class="working-now" style="display: none;">
+                    <h3>🟢 Εντός Εργασίας</h3>
+                    <div id="workingList" class="working-list"></div>
+                </div>
+                <div class="form-group">
+                    <label for="employeeSearch">🔍 Αναζήτηση Εργαζομένου:</label>
+                    <input type="text" id="employeeSearch" placeholder="Πληκτρολογήστε όνομα..." oninput="filterEmployees()" onfocus="filterEmployees()">
+                    <div id="employeeList" style="background: #f5f5f5; border: 1px solid #ddd; border-radius: 5px; margin-top: 5px; max-height: 200px; overflow-y: auto; display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label id="selectedEmployeeLabel" style="color: #667eea; font-weight: bold;">Επιλεγμένος: --</label>
+                </div>
+                <div class="form-group">
+                    <label for="newEmployeeName">Προσθήκη νέου εργαζομένου: <span id="employeeCount" style="color: #95a5a6; font-size: 0.9em;"></span></label>
+                    <input type="text" id="newEmployeeName" placeholder="Όνομα εργαζομένου" onkeypress="if(event.key==='Enter') addNewEmployee()">
+                </div>
+                <button class="btn-add-employee" onclick="addNewEmployee()">+ Προσθήκη Εργαζομένου</button>
+                <div class="button-group" style="margin-top: 20px;">
+                    <button class="btn-clock-in" id="btnClockIn" onclick="clockIn()">✓ Είσοδος</button>
+                    <button class="btn-clock-out" id="btnClockOut" onclick="clockOut()">✕ Έξοδος</button>
+                </div>
+                <div class="button-group" style="margin-top: 15px;">
+                    <button class="btn-backup" onclick="backupData()">💾 Backup</button>
+                    <button class="btn-restore" onclick="document.getElementById('restoreFile').click()">📂 Restore</button>
+                    <input type="file" id="restoreFile" accept=".json" style="display: none;" onchange="restoreData()">
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📊 Στατιστικά</h2>
+                <div class="filter-section">
+                    <label style="margin-bottom: 10px; display: block;"><strong>Φίλτρο Περιόδου:</strong></label>
+                    <div class="filter-row">
+                        <div><label style="font-size: 0.85em;">Από:</label><input type="date" id="filterFrom"></div>
+                        <div><label style="font-size: 0.85em;">Έως:</label><input type="date" id="filterTo"></div>
+                        <button onclick="applyFilter()">Εφαρμογή</button>
+                    </div>
+                    <button onclick="resetFilter()" style="margin-top: 8px; background: #95a5a6; color: white; padding: 6px; font-size: 0.85em;">Επαναφορά (Τρέχουσα Εβδομάδα)</button>
+                </div>
+                <div id="weeklyStats"><div class="no-data">Κανένα δεδομένο ακόμα</div></div>
+                <button class="btn-export" onclick="exportToExcel()" style="margin-top: 20px;">📊 Λήψη Excel</button>
+            </div>
+
+            <div class="card records-section">
+                <h2>📋 Καταγραφή Χτυπημάτων</h2>
+                <table class="records-table">
+                    <thead>
+                        <tr>
+                            <th>Ημερομηνία/Ώρα</th>
+                            <th>Εργαζόμενος</th>
+                            <th>Τύπος</th>
+                            <th>Διάρκεια</th>
+                            <th>Δράση</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsBody">
+                        <tr><td colspan="5" class="no-data">Κανένα χτύπημα καταγεγραμμένο ακόμα</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card records-section" style="margin-top: 20px;">
+                <h2 style="font-size: 1.1em;">ℹ️ Πληροφορίες Άδειας</h2>
+                <div id="licenseInfo" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Modal -->
+    <div class="modal-overlay" id="updateModal">
+        <div class="modal-content">
+            <h2>🎉 Νέα Ενημέρωση Διαθέσιμη!</h2>
+            <p>Έκδοση <strong id="modalNewVersion">--</strong> κυκλοφόρησε στις <strong id="modalReleaseDate">--</strong></p>
+            
+            <div class="modal-changelog">
+                <strong>Τι νέο υπάρχει:</strong>
+                <ul id="modalChangelog"></ul>
+            </div>
+
+            <div id="updateProgress" style="display: none;">
+                <p>Λήψη ενημέρωσης...</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
+                </div>
+            </div>
+
+            <div class="modal-buttons" id="updateButtons">
+                <button class="btn-clock-out" onclick="dismissUpdate()">Αργότερα</button>
+                <button class="btn-clock-in" onclick="performUpdate()">✓ Ενημέρωση Τώρα</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        // ========== ΜΥΣΤΙΚΟ ΚΛΕΙΔΙ (ΠΡΕΠΕΙ ΝΑ ΤΑΙΡΙΑΖΕΙ ΜΕ ΤΟΝ GENERATOR) ==========
+        const SECRET_KEY = "NIKOS_PRO_2026_SECRET_xK9mP2nQ7vR4tY8w";
+        
+        // ========== UPDATE SERVER URL (ΑΛΛΑΞΕ ΤΟ USERNAME) ==========
+        const UPDATE_SERVER = "https://YOUR_USERNAME.github.io/timeclock-updates";
+        const CURRENT_VERSION = "2.0.0";
+        const UPDATE_CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 ώρες
+        
+        let licenseData = null;
+        let records = [];
+        let employees = [];
+        let selectedEmployee = '';
+        let filterFromDate = null;
+        let filterToDate = null;
+        let hardwareFingerprint = null;
+
+        // ========== HARDWARE FINGERPRINT ==========
+        async function generateFingerprint() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#f60';
+            ctx.fillRect(125, 1, 62, 20);
+            ctx.fillStyle = '#069';
+            ctx.fillText('fingerprint', 2, 15);
+            const canvasFP = canvas.toDataURL();
+
+            const data = [
+                navigator.userAgent,
+                navigator.language,
+                screen.width + 'x' + screen.height,
+                screen.colorDepth,
+                new Date().getTimezoneOffset(),
+                navigator.platform,
+                navigator.hardwareConcurrency || 'unknown',
+                canvasFP.substring(0, 100)
+            ].join('|');
+
+            const encoder = new TextEncoder();
+            const dataBuf = encoder.encode(data);
+            const hashBuf = await crypto.subtle.digest('SHA-256', dataBuf);
+            const hashArray = Array.from(new Uint8Array(hashBuf));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
+        }
+
+        // ========== ΕΛΕΓΧΟΣ ΑΔΕΙΑΣ ==========
+        async function sha256(text) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function decodeData(encoded) {
+            try {
+                const json = decodeURIComponent(escape(atob(encoded)));
+                return JSON.parse(json);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function validateLicenseKey(key) {
+            const parts = key.trim().split('.');
+            if (parts.length !== 2) {
+                return { valid: false, error: 'Μη έγκυρο format' };
+            }
+
+            const [encoded, providedChecksum] = parts;
+            
+            // Έλεγχος checksum
+            const computedChecksum = await sha256(encoded + SECRET_KEY);
+            const shortChecksum = computedChecksum.substring(0, 16).toUpperCase();
+            
+            if (shortChecksum !== providedChecksum) {
+                return { valid: false, error: 'Μη έγκυρο License Key (λάθος checksum)' };
+            }
+
+            // Αποκωδικοποίηση
+            const data = decodeData(encoded);
+            if (!data) {
+                return { valid: false, error: 'Δεν είναι δυνατή η αποκωδικοποίηση' };
+            }
+
+            return { valid: true, data };
+        }
+
+        // ========== TAMPER DETECTION (ώρα συστήματος) ==========
+        function checkTampering() {
+            const stored = localStorage.getItem('lastKnownTime');
+            const now = Date.now();
+            
+            if (stored) {
+                const lastTime = parseInt(stored);
+                // Αν το ρολόι πάει πίσω παραπάνω από 1 ώρα → ύποπτο
+                if (now < lastTime - (60 * 60 * 1000)) {
+                    return false;
+                }
+            }
+            
+            localStorage.setItem('lastKnownTime', now.toString());
+            return true;
+        }
+
+        async function activateLicense() {
+            const key = document.getElementById('licenseInput').value.trim();
+            
+            if (!key) {
+                showToast('Παρακαλώ εισάγετε License Key', 'warning');
+                return;
+            }
+
+            const validation = await validateLicenseKey(key);
+            
+            if (!validation.valid) {
+                showToast('❌ ' + validation.error, 'error', 5000);
+                return;
+            }
+
+            const data = validation.data;
+
+            // Έλεγχος ημερομηνίας λήξης
+            const expiry = new Date(data.e);
+            expiry.setHours(23, 59, 59, 999);
+            const now = new Date();
+            
+            if (now > expiry) {
+                showToast('❌ Η άδεια έχει λήξει στις ' + expiry.toLocaleDateString('el-GR'), 'error', 5000);
+                return;
+            }
+
+            // Δημιουργία hardware fingerprint
+            hardwareFingerprint = await generateFingerprint();
+
+            // Αποθήκευση license
+            const licenseInfo = {
+                key,
+                data,
+                hardwareFingerprint,
+                activatedAt: Date.now()
+            };
+            
+            localStorage.setItem('proLicense', JSON.stringify(licenseInfo));
+            licenseData = licenseInfo;
+            
+            showToast('✅ Άδεια ενεργοποιήθηκε επιτυχώς!', 'success');
+            
+            setTimeout(() => {
+                showSplashAndStart();
+            }, 1000);
+        }
+
+        async function checkLicense() {
+            const stored = localStorage.getItem('proLicense');
+            if (!stored) return false;
+
+            try {
+                licenseData = JSON.parse(stored);
+                
+                // Επανέλεγχος του key
+                const validation = await validateLicenseKey(licenseData.key);
+                if (!validation.valid) {
+                    localStorage.removeItem('proLicense');
+                    return false;
+                }
+
+                // Έλεγχος hardware fingerprint
+                const currentFP = await generateFingerprint();
+                if (currentFP !== licenseData.hardwareFingerprint) {
+                    showToast('⚠️ Η άδεια ενεργοποιήθηκε σε άλλον υπολογιστή. Χρειάζεται επανενεργοποίηση.', 'error', 8000);
+                    localStorage.removeItem('proLicense');
+                    return false;
+                }
+
+                // Έλεγχος ημερομηνίας λήξης
+                const expiry = new Date(licenseData.data.e);
+                expiry.setHours(23, 59, 59, 999);
+                if (new Date() > expiry) {
+                    showToast('❌ Η άδεια έχει λήξει', 'error', 5000);
+                    return false;
+                }
+
+                // Έλεγχος tampering
+                if (!checkTampering()) {
+                    showToast('⚠️ Εντοπίστηκε αλλαγή ώρας συστήματος', 'error', 5000);
+                    return false;
+                }
+
+                return true;
+            } catch (e) {
+                localStorage.removeItem('proLicense');
+                return false;
+            }
+        }
+
+        // ========== TOAST ==========
+        function showToast(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // ========== ΑΠΟΘΗΚΕΥΣΗ ==========
+        function saveData() {
+            localStorage.setItem('timeClockData', JSON.stringify(records));
+            localStorage.setItem('employees', JSON.stringify(employees));
+        }
+
+        function loadData() {
+            records = JSON.parse(localStorage.getItem('timeClockData') || '[]');
+            employees = JSON.parse(localStorage.getItem('employees') || '[]');
+            updateDisplay();
+        }
+
+        // ========== BACKUP & RESTORE ==========
+        function backupData() {
+            const backup = {
+                records, employees,
+                exportDate: new Date().toISOString(),
+                company: licenseData.data.cn,
+                version: '2.0-pro'
+            };
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `backup-${licenseData.data.c}-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            showToast('Backup δημιουργήθηκε', 'success');
+        }
+
+        function restoreData() {
+            const file = document.getElementById('restoreFile').files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const backup = JSON.parse(e.target.result);
+                    if (!backup.records || !backup.employees) {
+                        showToast('Μη έγκυρο αρχείο backup', 'error');
+                        return;
+                    }
+                    if (confirm('Σίγουρα θέλετε να επαναφέρετε τα δεδομένα; Τα τρέχοντα δεδομένα θα χαθούν!')) {
+                        records = backup.records;
+                        employees = backup.employees;
+                        saveData();
+                        updateDisplay();
+                        showToast('Δεδομένα επαναφέρθηκαν', 'success');
+                    }
+                } catch (error) {
+                    showToast('Σφάλμα: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+            document.getElementById('restoreFile').value = '';
+        }
+
+        // ========== UTILITIES ==========
+        function escapeHTML(str) {
+            return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+        }
+
+        // ========== ΕΡΓΑΖΟΜΕΝΟΙ ==========
+        function createEmployeeItem(emp) {
+            const item = document.createElement('div');
+            item.className = 'employee-item';
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'employee-item-name';
+            const isWorking = isCurrentlyWorking(emp);
+            const indicator = document.createElement('span');
+            indicator.className = 'status-indicator ' + (isWorking ? 'status-in' : 'status-out');
+            nameSpan.appendChild(indicator);
+            nameSpan.appendChild(document.createTextNode(emp));
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'employee-item-delete';
+            deleteBtn.textContent = 'Διαγραφή';
+            deleteBtn.onclick = (e) => { e.stopPropagation(); deleteEmployee(emp); };
+            item.appendChild(nameSpan);
+            item.appendChild(deleteBtn);
+            item.onclick = (e) => {
+                if (!e.target.classList.contains('employee-item-delete')) selectEmployee(emp);
+            };
+            return item;
+        }
+
+        function filterEmployees() {
+            const searchText = document.getElementById('employeeSearch').value.toLowerCase();
+            const list = document.getElementById('employeeList');
+            list.innerHTML = '';
+            const filtered = searchText.length === 0 ? employees : employees.filter(emp => emp.toLowerCase().includes(searchText));
+            if (filtered.length === 0) { list.style.display = 'none'; return; }
+            filtered.forEach(emp => list.appendChild(createEmployeeItem(emp)));
+            list.style.display = 'block';
+        }
+
+        function selectEmployee(name) {
+            selectedEmployee = name;
+            document.getElementById('employeeSearch').value = name;
+            document.getElementById('selectedEmployeeLabel').textContent = 'Επιλεγμένος: ' + name;
+            document.getElementById('employeeList').style.display = 'none';
+            updateClockButtons();
+        }
+
+        function deleteEmployee(name) {
+            if (confirm('Σίγουρα θέλετε να διαγράψετε τον εργαζόμενο: ' + name + ';')) {
+                const idx = employees.indexOf(name);
+                if (idx > -1) {
+                    employees.splice(idx, 1);
+                    saveData();
+                    if (selectedEmployee === name) {
+                        selectedEmployee = '';
+                        document.getElementById('employeeSearch').value = '';
+                        document.getElementById('selectedEmployeeLabel').textContent = 'Επιλεγμένος: --';
+                        updateClockButtons();
+                    }
+                    filterEmployees();
+                    updateEmployeeCount();
+                    showToast('Ο εργαζόμενος διαγράφηκε', 'success');
+                }
+            }
+        }
+
+        function addNewEmployee() {
+            const name = document.getElementById('newEmployeeName').value.trim();
+            if (!name) { showToast('Εισάγετε όνομα', 'warning'); return; }
+            
+            // Έλεγχος ορίου
+            const maxEmp = licenseData.data.m;
+            if (employees.length >= maxEmp) {
+                showToast('Έχετε φτάσει το όριο των ' + maxEmp + ' εργαζομένων της άδειάς σας', 'error', 5000);
+                return;
+            }
+
+            if (employees.includes(name)) { showToast('Υπάρχει ήδη', 'warning'); return; }
+            employees.push(name);
+            employees.sort((a, b) => a.localeCompare(b, 'el'));
+            saveData();
+            document.getElementById('newEmployeeName').value = '';
+            showToast('Προστέθηκε: ' + name, 'success');
+            filterEmployees();
+            updateEmployeeCount();
+        }
+
+        function updateEmployeeCount() {
+            const count = employees.length;
+            const max = licenseData.data.m;
+            document.getElementById('employeeCount').textContent = `(${count}/${max})`;
+        }
+
+        // ========== ΧΤΥΠΗΜΑ ==========
+        function isCurrentlyWorking(name) {
+            const empRecs = records.filter(r => r.name === name).sort((a, b) => a.timestamp - b.timestamp);
+            if (empRecs.length === 0) return false;
+            return empRecs[empRecs.length - 1].type === 'in';
+        }
+
+        function getLastClockIn(name) {
+            const empRecs = records.filter(r => r.name === name && r.type === 'in').sort((a, b) => b.timestamp - a.timestamp);
+            return empRecs.length > 0 ? empRecs[0] : null;
+        }
+
+        function updateClockButtons() {
+            const btnIn = document.getElementById('btnClockIn');
+            const btnOut = document.getElementById('btnClockOut');
+            if (!selectedEmployee) { btnIn.disabled = true; btnOut.disabled = true; return; }
+            const isWorking = isCurrentlyWorking(selectedEmployee);
+            btnIn.disabled = isWorking;
+            btnOut.disabled = !isWorking;
+        }
+
+        function clockIn() {
+            if (!selectedEmployee) { showToast('Επιλέξτε εργαζόμενο', 'warning'); return; }
+            if (isCurrentlyWorking(selectedEmployee)) { showToast(selectedEmployee + ' είναι ήδη μέσα!', 'warning'); return; }
+            const now = new Date();
+            records.push({ name: selectedEmployee, type: 'in', timestamp: now.getTime(), datetime: now.toLocaleString('el-GR') });
+            saveData();
+            updateDisplay();
+            showToast(selectedEmployee + ' - Καλώς ήρθατε! ✓', 'success');
+        }
+
+        function clockOut() {
+            if (!selectedEmployee) { showToast('Επιλέξτε εργαζόμενο', 'warning'); return; }
+            if (!isCurrentlyWorking(selectedEmployee)) { showToast(selectedEmployee + ' δεν έχει κάνει είσοδο!', 'warning'); return; }
+            const now = new Date();
+            const lastIn = getLastClockIn(selectedEmployee);
+            const duration = lastIn ? ((now.getTime() - lastIn.timestamp) / (1000 * 60 * 60)).toFixed(2) : '0';
+            records.push({ name: selectedEmployee, type: 'out', timestamp: now.getTime(), datetime: now.toLocaleString('el-GR') });
+            saveData();
+            updateDisplay();
+            showToast(selectedEmployee + ' - Διάρκεια: ' + duration + ' ώρες ✕', 'success', 4000);
+        }
+
+        function deleteRecord(index) {
+            const realIdx = records.length - 1 - index;
+            if (confirm('Σίγουρα θέλετε να διαγράψετε αυτό το χτύπημα;')) {
+                records.splice(realIdx, 1);
+                saveData();
+                updateDisplay();
+            }
+        }
+
+        // ========== ΕΜΦΑΝΙΣΗ ==========
+        function updateDisplay() {
+            updateWorkingNow();
+            updateRecordsTable();
+            updateWeeklyStats();
+            filterEmployees();
+            updateClockButtons();
+            updateEmployeeCount();
+        }
+
+        function updateWorkingNow() {
+            const workingDiv = document.getElementById('workingNow');
+            const workingList = document.getElementById('workingList');
+            const working = employees.filter(emp => isCurrentlyWorking(emp));
+            if (working.length === 0) { workingDiv.style.display = 'none'; return; }
+            workingDiv.style.display = 'block';
+            workingList.innerHTML = '';
+            working.forEach(emp => {
+                const lastIn = getLastClockIn(emp);
+                const hours = lastIn ? ((Date.now() - lastIn.timestamp) / (1000 * 60 * 60)).toFixed(1) : '0';
+                const chip = document.createElement('div');
+                chip.className = 'working-chip';
+                chip.innerHTML = `<span>${escapeHTML(emp)}</span> <strong>${hours}h</strong>`;
+                workingList.appendChild(chip);
+            });
+        }
+
+        function updateRecordsTable() {
+            const tbody = document.getElementById('recordsBody');
+            if (records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="no-data">Κανένα χτύπημα ακόμα</td></tr>';
+                return;
+            }
+            const sorted = [...records].sort((a, b) => a.timestamp - b.timestamp);
+            const withDur = sorted.map((rec, idx) => {
+                let duration = '-';
+                if (rec.type === 'out') {
+                    for (let i = idx - 1; i >= 0; i--) {
+                        if (sorted[i].name === rec.name && sorted[i].type === 'in') {
+                            duration = ((rec.timestamp - sorted[i].timestamp) / (1000 * 60 * 60)).toFixed(2) + 'h';
+                            break;
+                        }
+                    }
+                }
+                return { ...rec, duration };
+            }).reverse();
+            tbody.innerHTML = withDur.map((rec, idx) => {
+                const cls = rec.type === 'in' ? 'badge-in' : 'badge-out';
+                const txt = rec.type === 'in' ? 'Είσοδος' : 'Έξοδος';
+                return `<tr><td>${escapeHTML(rec.datetime)}</td><td><strong>${escapeHTML(rec.name)}</strong></td><td><span class="time-badge ${cls}">${txt}</span></td><td>${rec.duration}</td><td><button class="btn-delete" onclick="deleteRecord(${idx})">Διαγραφή</button></td></tr>`;
+            }).join('');
+        }
+
+        function getDateRange() {
+            if (filterFromDate && filterToDate) return { start: filterFromDate, end: filterToDate, label: 'Επιλεγμένη Περίοδος' };
+            const now = new Date();
+            const weekStart = new Date(now);
+            const day = now.getDay();
+            weekStart.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+            weekStart.setHours(0, 0, 0, 0);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
+            return { start: weekStart, end: weekEnd, label: 'Τρέχουσα Εβδομάδα' };
+        }
+
+        function calculateHoursForEmployee(empRecs, startDate, endDate) {
+            let total = 0;
+            const sorted = empRecs.sort((a, b) => a.timestamp - b.timestamp);
+            for (let i = 0; i < sorted.length; i++) {
+                if (sorted[i].type === 'in') {
+                    for (let j = i + 1; j < sorted.length; j++) {
+                        if (sorted[j].type === 'out') {
+                            const effStart = Math.max(sorted[i].timestamp, startDate.getTime());
+                            const effEnd = Math.min(sorted[j].timestamp, endDate.getTime());
+                            if (effStart < effEnd) total += (effEnd - effStart) / (1000 * 60 * 60);
+                            i = j;
+                            break;
+                        }
+                    }
+                }
+            }
+            return total;
+        }
+
+        function applyFilter() {
+            const fromVal = document.getElementById('filterFrom').value;
+            const toVal = document.getElementById('filterTo').value;
+            if (!fromVal || !toVal) { showToast('Επιλέξτε ημερομηνίες', 'warning'); return; }
+            filterFromDate = new Date(fromVal); filterFromDate.setHours(0, 0, 0, 0);
+            filterToDate = new Date(toVal); filterToDate.setHours(23, 59, 59, 999);
+            updateWeeklyStats();
+        }
+
+        function resetFilter() {
+            filterFromDate = null; filterToDate = null;
+            document.getElementById('filterFrom').value = '';
+            document.getElementById('filterTo').value = '';
+            updateWeeklyStats();
+        }
+
+        function updateWeeklyStats() {
+            const { start, end, label } = getDateRange();
+            const stats = {};
+            employees.forEach(emp => {
+                const empRecs = records.filter(r => r.name === emp);
+                if (empRecs.length > 0) {
+                    const h = calculateHoursForEmployee(empRecs, start, end);
+                    if (h > 0 || isCurrentlyWorking(emp)) stats[emp] = h;
+                }
+            });
+            const html = Object.entries(stats).sort((a, b) => b[1] - a[1]).map(([n, h]) => {
+                const icon = isCurrentlyWorking(n) ? '🟢' : '⚪';
+                return `<div class="summary-card"><div class="summary-info"><h3>${icon} ${escapeHTML(n)}</h3><div class="hours">${h.toFixed(2)} ώρες</div></div></div>`;
+            }).join('');
+            document.getElementById('weeklyStats').innerHTML = `<p style="margin-bottom: 10px; color: #666; font-size: 0.9em;"><strong>${label}</strong></p>` + (html || '<div class="no-data">Κανένα δεδομένο</div>');
+        }
+
+        // ========== EXCEL EXPORT ==========
+        function exportToExcel() {
+            if (records.length === 0) { showToast('Δεν υπάρχουν δεδομένα', 'warning'); return; }
+            try {
+                const wb = XLSX.utils.book_new();
+                const companyName = licenseData.data.cn;
+
+                // Φύλλο 1: Λεπτομέρειες με header επιχείρησης
+                const detail = [
+                    ['Εταιρεία:', companyName, '', '', ''],
+                    ['Ημερομηνία Εξαγωγής:', new Date().toLocaleDateString('el-GR'), '', '', ''],
+                    ['', '', '', '', ''],
+                    ['Ημερομηνία/Ώρα', 'Εργαζόμενος', 'Τύπος', 'Διάρκεια (ώρες)', '']
+                ];
+                const sorted = [...records].sort((a, b) => a.timestamp - b.timestamp);
+                sorted.forEach((rec, idx) => {
+                    const type = rec.type === 'in' ? 'Είσοδος' : 'Έξοδος';
+                    let dur = '-';
+                    if (rec.type === 'out') {
+                        for (let i = idx - 1; i >= 0; i--) {
+                            if (sorted[i].name === rec.name && sorted[i].type === 'in') {
+                                dur = ((rec.timestamp - sorted[i].timestamp) / (1000 * 60 * 60)).toFixed(2);
+                                break;
+                            }
+                        }
+                    }
+                    detail.push([rec.datetime, rec.name, type, dur, '']);
+                });
+                const ws1 = XLSX.utils.aoa_to_sheet(detail);
+                ws1['!cols'] = [{ wch: 22 }, { wch: 25 }, { wch: 12 }, { wch: 18 }];
+                XLSX.utils.book_append_sheet(wb, ws1, 'Αναλυτικές Καταγραφές');
+
+                // Φύλλο 2: Ώρες ανά Ημέρα
+                const byDay = {};
+                sorted.forEach((rec, idx) => {
+                    if (rec.type === 'out') {
+                        for (let i = idx - 1; i >= 0; i--) {
+                            if (sorted[i].name === rec.name && sorted[i].type === 'in') {
+                                const dateKey = new Date(sorted[i].timestamp).toLocaleDateString('el-GR');
+                                if (!byDay[dateKey]) byDay[dateKey] = {};
+                                if (!byDay[dateKey][rec.name]) byDay[dateKey][rec.name] = 0;
+                                byDay[dateKey][rec.name] += (rec.timestamp - sorted[i].timestamp) / (1000 * 60 * 60);
+                                break;
+                            }
+                        }
+                    }
+                });
+                const dailyData = [
+                    ['Εταιρεία:', companyName, ''],
+                    ['', '', ''],
+                    ['Ημερομηνία', 'Εργαζόμενος', 'Σύνολο Ωρών']
+                ];
+                Object.keys(byDay).sort((a, b) => {
+                    const [d1, m1, y1] = a.split('/').map(Number);
+                    const [d2, m2, y2] = b.split('/').map(Number);
+                    return new Date(y1, m1-1, d1) - new Date(y2, m2-1, d2);
+                }).forEach(date => {
+                    Object.keys(byDay[date]).sort().forEach(name => {
+                        dailyData.push([date, name, byDay[date][name].toFixed(2)]);
+                    });
+                });
+                const ws2 = XLSX.utils.aoa_to_sheet(dailyData);
+                ws2['!cols'] = [{ wch: 15 }, { wch: 25 }, { wch: 15 }];
+                XLSX.utils.book_append_sheet(wb, ws2, 'Ώρες ανά Ημέρα');
+
+                // Φύλλο 3: Σύνολο
+                const totals = {};
+                Object.values(byDay).forEach(d => Object.entries(d).forEach(([n, h]) => { totals[n] = (totals[n] || 0) + h; }));
+                const totalData = [
+                    ['Εταιρεία:', companyName, ''],
+                    ['', '', ''],
+                    ['Εργαζόμενος', 'Σύνολο Ωρών', 'Κατάσταση']
+                ];
+                Object.entries(totals).sort((a, b) => b[1] - a[1]).forEach(([n, h]) => {
+                    totalData.push([n, h.toFixed(2), isCurrentlyWorking(n) ? 'Εντός Εργασίας' : 'Εκτός']);
+                });
+                const ws3 = XLSX.utils.aoa_to_sheet(totalData);
+                ws3['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 18 }];
+                XLSX.utils.book_append_sheet(wb, ws3, 'Σύνολο');
+
+                const fname = `${licenseData.data.c}-${new Date().toLocaleDateString('el-GR').replace(/\//g, '_')}.xlsx`;
+                XLSX.writeFile(wb, fname);
+                showToast('Excel δημιουργήθηκε', 'success');
+            } catch (e) {
+                showToast('Σφάλμα: ' + e.message, 'error');
+            }
+        }
+
+        // ========== UPDATE SYSTEM ==========
+        let availableUpdate = null;
+
+        async function checkForUpdates() {
+            try {
+                // Αποφυγή πολύ συχνών ελέγχων
+                const lastCheck = parseInt(localStorage.getItem('lastUpdateCheck') || '0');
+                const timeSinceCheck = Date.now() - lastCheck;
+                
+                // Επίτρεψε έλεγχο μόνο κάθε 6 ώρες (εκτός αν δεν έχει γίνει ποτέ)
+                if (lastCheck > 0 && timeSinceCheck < UPDATE_CHECK_INTERVAL) {
+                    return;
+                }
+
+                localStorage.setItem('lastUpdateCheck', Date.now().toString());
+
+                const response = await fetch(`${UPDATE_SERVER}/version.json?t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
+                
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                
+                if (compareVersions(data.version, CURRENT_VERSION) > 0) {
+                    // Έλεγχος αν ο πελάτης το έχει αγνοήσει
+                    const dismissed = localStorage.getItem('dismissedUpdate');
+                    
+                    availableUpdate = data;
+                    
+                    // Πάντα δείξε αν είναι critical, αλλιώς μόνο αν δεν το απέρριψε
+                    if (data.isCritical || dismissed !== data.version) {
+                        showUpdateBanner(data);
+                    }
+                }
+            } catch (e) {
+                console.log('Update check failed (offline?)', e.message);
+            }
+        }
+
+        function compareVersions(a, b) {
+            const aP = a.split('.').map(Number);
+            const bP = b.split('.').map(Number);
+            for (let i = 0; i < 3; i++) {
+                if (aP[i] > bP[i]) return 1;
+                if (aP[i] < bP[i]) return -1;
+            }
+            return 0;
+        }
+
+        function showUpdateBanner(data) {
+            const banner = document.getElementById('updateBanner');
+            const isCritical = data.isCritical;
+            
+            banner.innerHTML = `
+                <div class="update-banner ${isCritical ? 'critical' : ''}">
+                    <div class="update-banner-text">
+                        <h3>${isCritical ? '🚨 Κρίσιμη Ενημέρωση' : '🎉 Νέα Έκδοση Διαθέσιμη'}</h3>
+                        <p>Έκδοση ${data.version} - Πατήστε για να ενημερώσετε</p>
+                    </div>
+                    <div class="update-banner-actions">
+                        ${isCritical ? '' : '<button class="secondary" onclick="dismissUpdate()">Αργότερα</button>'}
+                        <button onclick="showUpdateModal()">${isCritical ? 'Υποχρεωτική Ενημέρωση' : '✓ Ενημέρωση'}</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showUpdateModal() {
+            if (!availableUpdate) return;
+            
+            document.getElementById('modalNewVersion').textContent = availableUpdate.version;
+            document.getElementById('modalReleaseDate').textContent = new Date(availableUpdate.releaseDate).toLocaleDateString('el-GR');
+            
+            const changelogList = document.getElementById('modalChangelog');
+            changelogList.innerHTML = (availableUpdate.changelog || []).map(c => `<li>${escapeHTML(c)}</li>`).join('');
+            
+            document.getElementById('updateModal').classList.add('active');
+        }
+
+        function dismissUpdate() {
+            if (availableUpdate) {
+                if (availableUpdate.isCritical) {
+                    showToast('Αυτή είναι κρίσιμη ενημέρωση και δεν μπορεί να αναβληθεί', 'error');
+                    return;
+                }
+                localStorage.setItem('dismissedUpdate', availableUpdate.version);
+                document.getElementById('updateBanner').innerHTML = '';
+                document.getElementById('updateModal').classList.remove('active');
+                showToast('Η ενημέρωση μπορεί να γίνει αργότερα από τις πληροφορίες άδειας', 'info');
+            }
+        }
+
+        async function performUpdate() {
+            if (!availableUpdate) return;
+
+            const buttons = document.getElementById('updateButtons');
+            const progress = document.getElementById('updateProgress');
+            const progressFill = document.getElementById('progressFill');
+            
+            buttons.style.display = 'none';
+            progress.style.display = 'block';
+
+            try {
+                // Κράτα backup των δεδομένων πρώτα
+                progressFill.style.width = '20%';
+                progressFill.textContent = 'Backup δεδομένων...';
+                
+                const dataBackup = {
+                    records: JSON.parse(localStorage.getItem('timeClockData') || '[]'),
+                    employees: JSON.parse(localStorage.getItem('employees') || '[]'),
+                    license: JSON.parse(localStorage.getItem('proLicense') || 'null')
+                };
+
+                await new Promise(r => setTimeout(r, 500));
+
+                // Κατέβασε το νέο HTML
+                progressFill.style.width = '50%';
+                progressFill.textContent = 'Λήψη νέας έκδοσης...';
+                
+                const response = await fetch(`${availableUpdate.updateUrl}?t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
+                
+                if (!response.ok) throw new Error('Σφάλμα λήψης ενημέρωσης');
+                
+                const newHTML = await response.text();
+                
+                progressFill.style.width = '80%';
+                progressFill.textContent = 'Εφαρμογή ενημέρωσης...';
+                
+                await new Promise(r => setTimeout(r, 500));
+
+                // Δημιουργία blob URL για το νέο HTML
+                const blob = new Blob([newHTML], { type: 'text/html' });
+                const newUrl = URL.createObjectURL(blob);
+                
+                // Αποθήκευση της νέας έκδοσης για offline χρήση
+                progressFill.style.width = '100%';
+                progressFill.textContent = '✓ Ολοκληρώθηκε!';
+                
+                await new Promise(r => setTimeout(r, 800));
+
+                // Δημιουργία download link για τον χρήστη
+                const downloadBlob = new Blob([newHTML], { type: 'text/html' });
+                const downloadUrl = URL.createObjectURL(downloadBlob);
+                const downloadLink = document.createElement('a');
+                downloadLink.href = downloadUrl;
+                downloadLink.download = 'time_clock_pro.html';
+                
+                const modalContent = document.querySelector('.modal-content');
+                modalContent.innerHTML = `
+                    <h2>✅ Ενημέρωση Επιτυχής!</h2>
+                    <p>Η νέα έκδοση κατέβηκε αυτόματα.</p>
+                    <div class="modal-changelog" style="background: #d4edda; border-left: 4px solid #27ae60;">
+                        <strong>📋 Επόμενα βήματα:</strong>
+                        <ol style="padding-left: 20px; margin-top: 10px;">
+                            <li>Αντικαταστήστε το παλιό αρχείο time_clock_pro.html με το νέο</li>
+                            <li>Κλείστε αυτό το παράθυρο</li>
+                            <li>Ανοίξτε το νέο αρχείο</li>
+                            <li>Τα δεδομένα σας θα παραμείνουν ακέραια!</li>
+                        </ol>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="btn-clock-in" onclick="downloadAndReload()">📥 Λήψη Νέας Έκδοσης</button>
+                    </div>
+                `;
+                
+                window._newAppHTML = newHTML;
+                
+            } catch (e) {
+                document.getElementById('updateProgress').innerHTML = `
+                    <p style="color: #e74c3c;">❌ Σφάλμα: ${e.message}</p>
+                    <p>Βεβαιωθείτε ότι έχετε σύνδεση στο internet.</p>
+                `;
+                buttons.style.display = 'flex';
+            }
+        }
+
+        function downloadAndReload() {
+            const blob = new Blob([window._newAppHTML], { type: 'text/html' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'time_clock_pro.html';
+            link.click();
+            
+            setTimeout(() => {
+                document.getElementById('updateModal').classList.remove('active');
+                showToast('Αντικαταστήστε το παλιό αρχείο με το νέο και ξανανοίξτε', 'info', 8000);
+            }, 1000);
+        }
+
+        // ========== ANNOUNCEMENTS ==========
+        async function checkAnnouncements() {
+            try {
+                const response = await fetch(`${UPDATE_SERVER}/announcements.json?t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                const today = new Date().toISOString().split('T')[0];
+                const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '[]');
+                
+                const active = data.announcements.filter(a => 
+                    a.expiresAt >= today && !dismissed.includes(a.id)
+                );
+                
+                showAnnouncements(active);
+            } catch (e) {
+                console.log('Announcements check failed (offline?)', e.message);
+            }
+        }
+
+        function showAnnouncements(announcements) {
+            const container = document.getElementById('announcementsContainer');
+            
+            if (announcements.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = announcements.map(ann => {
+                const icons = { info: 'ℹ️', warning: '⚠️', urgent: '🚨' };
+                return `
+                    <div class="announcement ${ann.type}">
+                        <div class="announcement-content">
+                            <h4>${icons[ann.type]} ${escapeHTML(ann.title)}</h4>
+                            <p>${escapeHTML(ann.message)}</p>
+                            <div class="announcement-date">📅 ${ann.date}</div>
+                        </div>
+                        <button class="announcement-close" onclick="dismissAnnouncement('${ann.id}')" title="Απόκρυψη">×</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function dismissAnnouncement(id) {
+            const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '[]');
+            if (!dismissed.includes(id)) {
+                dismissed.push(id);
+                localStorage.setItem('dismissedAnnouncements', JSON.stringify(dismissed));
+            }
+            checkAnnouncements();
+        }
+
+        // ========== ΑΡΧΙΚΟΠΟΙΗΣΗ ==========
+        async function showSplashAndStart() {
+            document.getElementById('licenseScreen').style.display = 'none';
+            const splash = document.getElementById('splashScreen');
+            document.getElementById('splashCompany').textContent = licenseData.data.cn;
+            splash.style.display = 'flex';
+            
+            setTimeout(() => {
+                splash.classList.add('fade-out');
+                setTimeout(() => {
+                    splash.style.display = 'none';
+                    startApp();
+                }, 500);
+            }, 2500);
+        }
+
+        function startApp() {
+            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('companyBadge').textContent = '🏢 ' + licenseData.data.cn;
+            
+            // Έλεγχος ημερομηνίας λήξης
+            const expiry = new Date(licenseData.data.e);
+            const now = new Date();
+            const daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+            
+            const warningDiv = document.getElementById('expiryWarning');
+            if (daysLeft <= 30 && daysLeft > 7) {
+                warningDiv.innerHTML = `<div class="expiry-warning">⚠️ Η άδειά σας λήγει σε ${daysLeft} ημέρες (${expiry.toLocaleDateString('el-GR')}). Επικοινωνήστε για ανανέωση.</div>`;
+            } else if (daysLeft <= 7) {
+                warningDiv.innerHTML = `<div class="expiry-warning urgent">🚨 ΕΠΕΙΓΟΝ: Η άδειά σας λήγει σε ${daysLeft} ημέρες! Επικοινωνήστε άμεσα για ανανέωση.</div>`;
+            }
+
+            // License Info
+            document.getElementById('licenseInfo').innerHTML = `
+                <div><strong>🏢 Επιχείρηση:</strong> ${escapeHTML(licenseData.data.cn)}</div>
+                <div><strong>📅 Λήξη Άδειας:</strong> ${expiry.toLocaleDateString('el-GR')}</div>
+                <div><strong>👥 Max Εργαζόμενοι:</strong> ${licenseData.data.m}</div>
+                <div><strong>⏱️ Ημέρες έως λήξη:</strong> ${daysLeft}</div>
+                <div><strong>📦 Έκδοση:</strong> ${CURRENT_VERSION}</div>
+                <div><strong>🔄 Auto-Updates:</strong> Ενεργό</div>
+            `;
+            
+            loadData();
+            
+            // Έλεγχος για ενημερώσεις και ανακοινώσεις
+            checkForUpdates();
+            checkAnnouncements();
+            
+            // Periodic checks
+            setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL);
+            setInterval(checkAnnouncements, 30 * 60 * 1000); // κάθε 30 λεπτά
+            
+            // Auto-update κάθε λεπτό
+            setInterval(updateWorkingNow, 60000);
+        }
+
+        // ========== EVENT LISTENERS ==========
+        document.addEventListener('click', function(event) {
+            const searchInput = document.getElementById('employeeSearch');
+            const list = document.getElementById('employeeList');
+            if (searchInput && list && !searchInput.contains(event.target) && !list.contains(event.target)) {
+                list.style.display = 'none';
+            }
+        });
+
+        // ========== ENTRY POINT ==========
+        window.addEventListener('load', async () => {
+            const isLicensed = await checkLicense();
+            if (isLicensed) {
+                showSplashAndStart();
+            } else {
+                document.getElementById('licenseScreen').style.display = 'flex';
+            }
+        });
+    </script>
+</body>
+</html>
