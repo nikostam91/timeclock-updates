@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Έλεγχος Ενημερώσεων - Σύστημα Χτυπήματος Κάρτας</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+        .container {
+            max-width: 700px;
+            width: 100%;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .loader {
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e0e0e0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result-card {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+        .result-card.show { display: block; }
+        .result-up-to-date {
+            background: #d4edda;
+            border-left: 4px solid #27ae60;
+            color: #155724;
+        }
+        .result-update-available {
+            background: #fff3cd;
+            border-left: 4px solid #f39c12;
+            color: #856404;
+        }
+        .result-critical {
+            background: #f8d7da;
+            border-left: 4px solid #e74c3c;
+            color: #721c24;
+        }
+        .result-error {
+            background: #f8d7da;
+            border-left: 4px solid #e74c3c;
+            color: #721c24;
+        }
+        .version-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 5px;
+        }
+        .changelog {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .changelog h3 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+        .changelog ul {
+            padding-left: 20px;
+        }
+        .changelog li {
+            margin: 5px 0;
+        }
+        .download-section {
+            background: #e8f5e9;
+            border: 2px dashed #27ae60;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .download-section h3 {
+            color: #27ae60;
+            margin-bottom: 15px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #27ae60;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: 600;
+            margin: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #229954;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
+        }
+        .btn-secondary {
+            background: #95a5a6;
+        }
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        .instructions {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .instructions h3 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+        .instructions ol {
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+        .footer {
+            text-align: center;
+            color: rgba(255,255,255,0.7);
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔄 Έλεγχος Ενημερώσεων</h1>
+            <p class="subtitle">Σύστημα Χτυπήματος Κάρτας - Pro Edition</p>
+
+            <div id="loader" class="loader">
+                <div class="spinner"></div>
+                <p style="margin-top: 20px;">Έλεγχος για νέα έκδοση...</p>
+            </div>
+
+            <div id="resultUpToDate" class="result-card result-up-to-date">
+                <h2>✅ Είστε ενημερωμένοι!</h2>
+                <p style="margin-top: 10px;">Έχετε την πιο πρόσφατη έκδοση της εφαρμογής.</p>
+                <div class="version-info">
+                    <strong>Τρέχουσα έκδοση:</strong>
+                    <span id="currentVersionDisplay1">--</span>
+                </div>
+            </div>
+
+            <div id="resultUpdateAvailable" class="result-card result-update-available">
+                <h2>🎉 Νέα Έκδοση Διαθέσιμη!</h2>
+                <div class="version-info">
+                    <strong>Τρέχουσα έκδοση:</strong>
+                    <span id="currentVersionDisplay2">--</span>
+                </div>
+                <div class="version-info">
+                    <strong>Νέα έκδοση:</strong>
+                    <span id="newVersionDisplay" style="color: #27ae60; font-weight: bold;">--</span>
+                </div>
+                <div class="version-info">
+                    <strong>Ημερομηνία κυκλοφορίας:</strong>
+                    <span id="releaseDateDisplay">--</span>
+                </div>
+
+                <div class="changelog">
+                    <h3>📋 Τι νέο υπάρχει:</h3>
+                    <ul id="changelogList"></ul>
+                </div>
+
+                <div class="download-section">
+                    <h3>📥 Λήψη Νέας Έκδοσης</h3>
+                    <p style="margin-bottom: 15px;">Κατεβάστε το νέο αρχείο και αντικαταστήστε το παλιό:</p>
+                    <a href="latest.html" download="time_clock_pro.html" class="btn">⬇️ Λήψη time_clock_pro.html</a>
+                </div>
+
+                <div class="instructions">
+                    <h3>📋 Οδηγίες Εγκατάστασης:</h3>
+                    <ol>
+                        <li>Πατήστε το κουμπί "Λήψη" παραπάνω</li>
+                        <li>Βρείτε το παλιό αρχείο <strong>time_clock_pro.html</strong> στον υπολογιστή σας</li>
+                        <li><strong>Αντικαταστήστε το</strong> με το νέο που μόλις κατεβάσατε</li>
+                        <li>Ανοίξτε το νέο αρχείο με διπλό κλικ</li>
+                        <li>Τα δεδομένα σας θα παραμείνουν ακέραια! ✓</li>
+                    </ol>
+                </div>
+
+                <p style="margin-top: 20px; padding: 12px; background: #fff3cd; border-radius: 5px; font-size: 0.95em;">
+                    💡 <strong>Συμβουλή:</strong> Πριν την ενημέρωση, κάντε ένα backup από την εφαρμογή σας (κουμπί "💾 Backup")
+                </p>
+            </div>
+
+            <div id="resultCritical" class="result-card result-critical">
+                <h2>🚨 Κρίσιμη Ενημέρωση!</h2>
+                <p style="margin-top: 10px;">Υπάρχει κρίσιμη ενημέρωση που πρέπει να εγκατασταθεί άμεσα.</p>
+                <div class="version-info">
+                    <strong>Νέα έκδοση:</strong>
+                    <span id="criticalVersion">--</span>
+                </div>
+                <div class="changelog">
+                    <h3>📋 Λεπτομέρειες:</h3>
+                    <ul id="criticalChangelog"></ul>
+                </div>
+                <div class="download-section">
+                    <a href="latest.html" download="time_clock_pro.html" class="btn">⬇️ Λήψη Κρίσιμης Ενημέρωσης</a>
+                </div>
+            </div>
+
+            <div id="resultError" class="result-card result-error">
+                <h2>❌ Σφάλμα Σύνδεσης</h2>
+                <p style="margin-top: 10px;">Δεν ήταν δυνατή η σύνδεση με τον server ενημερώσεων.</p>
+                <p style="margin-top: 10px;">Παρακαλώ ελέγξτε τη σύνδεση internet και προσπαθήστε ξανά.</p>
+                <button class="btn" onclick="checkForUpdates()" style="margin-top: 15px;">🔄 Δοκιμή Ξανά</button>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="btn btn-secondary" onclick="window.close()">✕ Κλείσιμο</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Σύστημα Χτυπήματος Κάρτας &copy; 2026</p>
+        </div>
+    </div>
+
+    <script>
+        // Λήψη τρέχουσας έκδοσης από URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentVersion = urlParams.get('current') || '1.0.0';
+
+        document.getElementById('currentVersionDisplay1').textContent = currentVersion;
+        document.getElementById('currentVersionDisplay2').textContent = currentVersion;
+
+        function compareVersions(a, b) {
+            const aP = a.split('.').map(Number);
+            const bP = b.split('.').map(Number);
+            for (let i = 0; i < 3; i++) {
+                if (aP[i] > bP[i]) return 1;
+                if (aP[i] < bP[i]) return -1;
+            }
+            return 0;
+        }
+
+        async function checkForUpdates() {
+            document.getElementById('loader').style.display = 'block';
+            ['resultUpToDate', 'resultUpdateAvailable', 'resultCritical', 'resultError']
+                .forEach(id => document.getElementById(id).classList.remove('show'));
+
+            try {
+                const response = await fetch('version.json?t=' + Date.now(), {
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch');
+
+                const data = await response.json();
+                const comparison = compareVersions(data.version, currentVersion);
+
+                document.getElementById('loader').style.display = 'none';
+
+                if (comparison > 0) {
+                    if (data.isCritical) {
+                        // Κρίσιμη ενημέρωση
+                        document.getElementById('criticalVersion').textContent = data.version;
+                        const list = document.getElementById('criticalChangelog');
+                        list.innerHTML = (data.changelog || []).map(c => `<li>${c}</li>`).join('');
+                        document.getElementById('resultCritical').classList.add('show');
+                    } else {
+                        // Κανονική ενημέρωση
+                        document.getElementById('newVersionDisplay').textContent = data.version;
+                        document.getElementById('releaseDateDisplay').textContent = 
+                            new Date(data.releaseDate).toLocaleDateString('el-GR');
+                        const list = document.getElementById('changelogList');
+                        list.innerHTML = (data.changelog || []).map(c => `<li>${c}</li>`).join('');
+                        document.getElementById('resultUpdateAvailable').classList.add('show');
+                    }
+                } else {
+                    // Είστε ενημερωμένοι
+                    document.getElementById('resultUpToDate').classList.add('show');
+                }
+            } catch (e) {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('resultError').classList.add('show');
+                console.error('Update check failed:', e);
+            }
+        }
+
+        // Αυτόματος έλεγχος στο load
+        checkForUpdates();
+    </script>
+</body>
+</html>

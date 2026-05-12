@@ -679,6 +679,9 @@
             <div class="card records-section" style="margin-top: 20px;">
                 <h2 style="font-size: 1.1em;">ℹ️ Πληροφορίες Άδειας</h2>
                 <div id="licenseInfo" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;"></div>
+                <button onclick="checkForUpdates(true)" style="background: #3498db; color: white; margin-top: 15px; width: 100%; padding: 12px;">
+                    🔄 Έλεγχος για Ενημερώσεις
+                </button>
             </div>
         </div>
     </div>
@@ -754,7 +757,7 @@
         
         // ========== UPDATE SERVER URL ==========
         const UPDATE_SERVER = "https://nikostam91.github.io/timeclock-updates";
-        const CURRENT_VERSION = "2.1.0";
+        const CURRENT_VERSION = "2.2.0";
         const UPDATE_CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 ώρες
         
         let licenseData = null;
@@ -1369,16 +1372,35 @@
 
         // ========== UPDATE SYSTEM ==========
         let availableUpdate = null;
+        let isOfflineMode = false;
 
-        async function checkForUpdates() {
+        // Έλεγχος αν τρέχει από file:// που δεν επιτρέπει fetch
+        function isFileProtocol() {
+            return window.location.protocol === 'file:';
+        }
+
+        async function checkForUpdates(manual = false) {
             try {
-                // Αποφυγή πολύ συχνών ελέγχων
-                const lastCheck = parseInt(localStorage.getItem('lastUpdateCheck') || '0');
-                const timeSinceCheck = Date.now() - lastCheck;
-                
-                // Επίτρεψε έλεγχο μόνο κάθε 6 ώρες (εκτός αν δεν έχει γίνει ποτέ)
-                if (lastCheck > 0 && timeSinceCheck < UPDATE_CHECK_INTERVAL) {
+                // Αν τρέχει από file://, ενεργοποίησε offline mode
+                if (isFileProtocol()) {
+                    isOfflineMode = true;
+                    showManualUpdateButton();
+                    
+                    if (manual) {
+                        // Manual έλεγχος: άνοιξε το GitHub Pages
+                        openManualUpdateCheck();
+                    }
                     return;
+                }
+
+                // Αποφυγή πολύ συχνών ελέγχων (αλλά πάντα επιτρέπει manual)
+                if (!manual) {
+                    const lastCheck = parseInt(localStorage.getItem('lastUpdateCheck') || '0');
+                    const timeSinceCheck = Date.now() - lastCheck;
+                    
+                    if (lastCheck > 0 && timeSinceCheck < UPDATE_CHECK_INTERVAL) {
+                        return;
+                    }
                 }
 
                 localStorage.setItem('lastUpdateCheck', Date.now().toString());
@@ -1387,7 +1409,10 @@
                     cache: 'no-store'
                 });
                 
-                if (!response.ok) return;
+                if (!response.ok) {
+                    if (manual) showToast('Δεν ήταν δυνατός ο έλεγχος ενημερώσεων', 'warning');
+                    return;
+                }
                 
                 const data = await response.json();
                 
@@ -1397,14 +1422,57 @@
                     
                     availableUpdate = data;
                     
-                    // Πάντα δείξε αν είναι critical, αλλιώς μόνο αν δεν το απέρριψε
-                    if (data.isCritical || dismissed !== data.version) {
+                    if (data.isCritical || dismissed !== data.version || manual) {
                         showUpdateBanner(data);
+                    }
+
+                    if (manual) {
+                        showToast('🎉 Νέα έκδοση ' + data.version + ' διαθέσιμη!', 'success', 4000);
+                    }
+                } else {
+                    if (manual) {
+                        showToast('✅ Έχετε την πιο πρόσφατη έκδοση (' + CURRENT_VERSION + ')', 'success');
                     }
                 }
             } catch (e) {
-                console.log('Update check failed (offline?)', e.message);
+                console.log('Update check failed:', e.message);
+                if (manual) {
+                    isOfflineMode = true;
+                    showManualUpdateButton();
+                    openManualUpdateCheck();
+                }
             }
+        }
+
+        function showManualUpdateButton() {
+            const banner = document.getElementById('updateBanner');
+            if (banner.innerHTML.trim() !== '') return; // Ήδη υπάρχει banner
+            
+            banner.innerHTML = `
+                <div class="update-banner" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">
+                    <div class="update-banner-text">
+                        <h3>🌐 Έλεγχος Ενημερώσεων</h3>
+                        <p>Πατήστε για να ελέγξετε αν υπάρχει νέα έκδοση</p>
+                    </div>
+                    <div class="update-banner-actions">
+                        <button onclick="openManualUpdateCheck()">🔄 Έλεγχος Online</button>
+                        <button class="secondary" onclick="hideManualUpdateBanner()">✕</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function hideManualUpdateBanner() {
+            document.getElementById('updateBanner').innerHTML = '';
+            // Δεν θα ξαναεμφανιστεί σε αυτή τη συνεδρία
+            sessionStorage.setItem('hideManualBanner', 'true');
+        }
+
+        function openManualUpdateCheck() {
+            // Άνοιγμα tab με την υπηρεσία ελέγχου
+            const checkUrl = UPDATE_SERVER + '/check.html?current=' + encodeURIComponent(CURRENT_VERSION);
+            window.open(checkUrl, '_blank');
+            showToast('Ανοίγει νέα καρτέλα για έλεγχο...', 'info');
         }
 
         function compareVersions(a, b) {
@@ -1561,6 +1629,11 @@
 
         // ========== ANNOUNCEMENTS ==========
         async function checkAnnouncements() {
+            // Αν τρέχει από file://, δεν μπορούμε να φέρουμε announcements
+            if (isFileProtocol()) {
+                return;
+            }
+
             try {
                 const response = await fetch(`${UPDATE_SERVER}/announcements.json?t=${Date.now()}`, {
                     cache: 'no-store'
