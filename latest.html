@@ -465,6 +465,85 @@
             margin-top: 20px;
         }
         .modal-buttons button { flex: 1; }
+
+        /* ========== MANUAL ENTRY ========== */
+        .btn-manual-entry {
+            background: #f39c12;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-manual-entry:hover { background: #e67e22; }
+        
+        .manual-modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 99996;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .manual-modal.active { display: flex; }
+        .manual-modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .manual-modal-content h2 {
+            color: #f39c12;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f39c12;
+            padding-bottom: 10px;
+        }
+        .manual-modal-content label {
+            color: #333;
+            margin-top: 12px;
+        }
+        .manual-modal-content input,
+        .manual-modal-content select {
+            margin-top: 5px;
+        }
+        .manual-info {
+            background: #fff3cd;
+            border-left: 4px solid #f39c12;
+            padding: 12px;
+            border-radius: 5px;
+            margin: 15px 0;
+            color: #856404;
+            font-size: 0.9em;
+        }
+        .pending-employee {
+            background: #fee;
+            border: 2px solid #e74c3c;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 8px 0;
+        }
+        .pending-employee-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .pending-time {
+            color: #c0392b;
+            font-weight: bold;
+        }
+        .badge-manual {
+            background: #fef3c7;
+            color: #92400e;
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.75em;
+            margin-left: 5px;
+        }
         .progress-bar {
             background: #e0e0e0;
             border-radius: 10px;
@@ -556,6 +635,7 @@
                     <button class="btn-clock-in" id="btnClockIn" onclick="clockIn()">✓ Είσοδος</button>
                     <button class="btn-clock-out" id="btnClockOut" onclick="clockOut()">✕ Έξοδος</button>
                 </div>
+                <button class="btn-manual-entry" onclick="openManualEntry()">⏰ Εκπρόθεσμη Καταχώρηση</button>
                 <div class="button-group" style="margin-top: 15px;">
                     <button class="btn-backup" onclick="backupData()">💾 Backup</button>
                     <button class="btn-restore" onclick="document.getElementById('restoreFile').click()">📂 Restore</button>
@@ -603,6 +683,45 @@
         </div>
     </div>
 
+    <!-- Manual Entry Modal -->
+    <div class="manual-modal" id="manualModal">
+        <div class="manual-modal-content">
+            <h2>⏰ Εκπρόθεσμη Καταχώρηση</h2>
+            <p style="color: #666;">Καταχωρήστε χτύπημα κάρτας για παρελθούσα ημερομηνία/ώρα</p>
+
+            <div id="pendingEmployees"></div>
+
+            <label for="manualEmployee">👤 Εργαζόμενος:</label>
+            <select id="manualEmployee">
+                <option value="">-- Επιλέξτε --</option>
+            </select>
+
+            <label for="manualType">📋 Τύπος Χτυπήματος:</label>
+            <select id="manualType" onchange="updateManualHelp()">
+                <option value="out">✕ Έξοδος (ξεχάστηκε)</option>
+                <option value="in">✓ Είσοδος (καθυστερημένη)</option>
+            </select>
+
+            <label for="manualDate">📅 Ημερομηνία:</label>
+            <input type="date" id="manualDate">
+
+            <label for="manualTime">🕐 Ώρα:</label>
+            <input type="time" id="manualTime">
+
+            <label for="manualReason">📝 Αιτιολογία (προαιρετικό):</label>
+            <input type="text" id="manualReason" placeholder="π.χ. Ξέχασε να χτυπήσει έξοδο">
+
+            <div class="manual-info" id="manualHelpText">
+                💡 Για να καταχωρήσετε έξοδο, ο εργαζόμενος πρέπει να έχει κάνει είσοδο που δεν έχει κλείσει.
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn-clock-out" onclick="closeManualEntry()">Ακύρωση</button>
+                <button class="btn-clock-in" onclick="saveManualEntry()">💾 Καταχώρηση</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Update Modal -->
     <div class="modal-overlay" id="updateModal">
         <div class="modal-content">
@@ -633,9 +752,9 @@
         // ========== ΜΥΣΤΙΚΟ ΚΛΕΙΔΙ (ΠΡΕΠΕΙ ΝΑ ΤΑΙΡΙΑΖΕΙ ΜΕ ΤΟΝ GENERATOR) ==========
         const SECRET_KEY = "NIKOS_PRO_2026_SECRET_xK9mP2nQ7vR4tY8w";
         
-        // ========== UPDATE SERVER URL (ΑΛΛΑΞΕ ΤΟ USERNAME) ==========
+        // ========== UPDATE SERVER URL ==========
         const UPDATE_SERVER = "https://nikostam91.github.io/timeclock-updates";
-        const CURRENT_VERSION = "2.0.0";
+        const CURRENT_VERSION = "2.1.0";
         const UPDATE_CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 ώρες
         
         let licenseData = null;
@@ -1088,7 +1207,8 @@
             tbody.innerHTML = withDur.map((rec, idx) => {
                 const cls = rec.type === 'in' ? 'badge-in' : 'badge-out';
                 const txt = rec.type === 'in' ? 'Είσοδος' : 'Έξοδος';
-                return `<tr><td>${escapeHTML(rec.datetime)}</td><td><strong>${escapeHTML(rec.name)}</strong></td><td><span class="time-badge ${cls}">${txt}</span></td><td>${rec.duration}</td><td><button class="btn-delete" onclick="deleteRecord(${idx})">Διαγραφή</button></td></tr>`;
+                const manualBadge = rec.manual ? '<span class="badge-manual" title="' + escapeHTML(rec.reason || 'Εκπρόθεσμη καταχώρηση') + '">📝 manual</span>' : '';
+                return `<tr><td>${escapeHTML(rec.datetime)}</td><td><strong>${escapeHTML(rec.name)}</strong>${manualBadge}</td><td><span class="time-badge ${cls}">${txt}</span></td><td>${rec.duration}</td><td><button class="btn-delete" onclick="deleteRecord(${idx})">Διαγραφή</button></td></tr>`;
             }).join('');
         }
 
@@ -1166,10 +1286,10 @@
 
                 // Φύλλο 1: Λεπτομέρειες με header επιχείρησης
                 const detail = [
-                    ['Εταιρεία:', companyName, '', '', ''],
-                    ['Ημερομηνία Εξαγωγής:', new Date().toLocaleDateString('el-GR'), '', '', ''],
-                    ['', '', '', '', ''],
-                    ['Ημερομηνία/Ώρα', 'Εργαζόμενος', 'Τύπος', 'Διάρκεια (ώρες)', '']
+                    ['Εταιρεία:', companyName, '', '', '', ''],
+                    ['Ημερομηνία Εξαγωγής:', new Date().toLocaleDateString('el-GR'), '', '', '', ''],
+                    ['', '', '', '', '', ''],
+                    ['Ημερομηνία/Ώρα', 'Εργαζόμενος', 'Τύπος', 'Διάρκεια (ώρες)', 'Καταχώρηση', 'Αιτιολογία']
                 ];
                 const sorted = [...records].sort((a, b) => a.timestamp - b.timestamp);
                 sorted.forEach((rec, idx) => {
@@ -1183,10 +1303,12 @@
                             }
                         }
                     }
-                    detail.push([rec.datetime, rec.name, type, dur, '']);
+                    const entryType = rec.manual ? 'Εκπρόθεσμη' : 'Αυτόματη';
+                    const reason = rec.reason || '';
+                    detail.push([rec.datetime, rec.name, type, dur, entryType, reason]);
                 });
                 const ws1 = XLSX.utils.aoa_to_sheet(detail);
-                ws1['!cols'] = [{ wch: 22 }, { wch: 25 }, { wch: 12 }, { wch: 18 }];
+                ws1['!cols'] = [{ wch: 22 }, { wch: 25 }, { wch: 12 }, { wch: 18 }, { wch: 15 }, { wch: 30 }];
                 XLSX.utils.book_append_sheet(wb, ws1, 'Αναλυτικές Καταγραφές');
 
                 // Φύλλο 2: Ώρες ανά Ημέρα
@@ -1489,6 +1611,212 @@
                 localStorage.setItem('dismissedAnnouncements', JSON.stringify(dismissed));
             }
             checkAnnouncements();
+        }
+
+        // ========== MANUAL ENTRY (Εκπρόθεσμη Καταχώρηση) ==========
+        function openManualEntry() {
+            const modal = document.getElementById('manualModal');
+            const select = document.getElementById('manualEmployee');
+            
+            // Γέμισμα dropdown εργαζομένων
+            select.innerHTML = '<option value="">-- Επιλέξτε --</option>';
+            employees.forEach(emp => {
+                const opt = document.createElement('option');
+                opt.value = emp;
+                opt.textContent = emp + (isCurrentlyWorking(emp) ? ' 🟢 (εντός εργασίας)' : '');
+                select.appendChild(opt);
+            });
+
+            // Default ημερομηνία/ώρα: σήμερα
+            const now = new Date();
+            document.getElementById('manualDate').valueAsDate = now;
+            document.getElementById('manualTime').value = now.toTimeString().slice(0, 5);
+            document.getElementById('manualReason').value = '';
+            document.getElementById('manualType').value = 'out';
+
+            // Εμφάνιση εργαζομένων που εκκρεμούν
+            updatePendingEmployees();
+            updateManualHelp();
+
+            modal.classList.add('active');
+        }
+
+        function closeManualEntry() {
+            document.getElementById('manualModal').classList.remove('active');
+        }
+
+        function updatePendingEmployees() {
+            const pendingDiv = document.getElementById('pendingEmployees');
+            const pending = employees.filter(emp => {
+                if (!isCurrentlyWorking(emp)) return false;
+                const lastIn = getLastClockIn(emp);
+                if (!lastIn) return false;
+                const hoursAgo = (Date.now() - lastIn.timestamp) / (1000 * 60 * 60);
+                return hoursAgo > 12; // Πάνω από 12 ώρες
+            });
+
+            if (pending.length === 0) {
+                pendingDiv.innerHTML = '';
+                return;
+            }
+
+            const html = '<div style="background: #fff5f5; padding: 12px; border-radius: 8px; border-left: 4px solid #e74c3c; margin-bottom: 15px;">' +
+                '<strong style="color: #c0392b;">⚠️ Πιθανώς ξεχασμένες έξοδοι:</strong>' +
+                pending.map(emp => {
+                    const lastIn = getLastClockIn(emp);
+                    const hours = ((Date.now() - lastIn.timestamp) / (1000 * 60 * 60)).toFixed(1);
+                    const inDate = new Date(lastIn.timestamp);
+                    return `
+                        <div class="pending-employee" style="margin-top: 8px;">
+                            <div class="pending-employee-info">
+                                <strong>${escapeHTML(emp)}</strong>
+                                <span class="pending-time">${hours}h μέσα</span>
+                            </div>
+                            <div style="font-size: 0.85em; color: #666;">
+                                Είσοδος: ${inDate.toLocaleString('el-GR')}
+                            </div>
+                            <button class="btn-clock-out" style="margin-top: 8px; padding: 6px; font-size: 0.85em;" onclick="quickFixPending('${escapeHTML(emp).replace(/'/g, "\\'")}')">
+                                🔧 Γρήγορη Διόρθωση
+                            </button>
+                        </div>
+                    `;
+                }).join('') +
+                '</div>';
+            pendingDiv.innerHTML = html;
+        }
+
+        function quickFixPending(empName) {
+            // Προ-συμπλήρωση φόρμας για γρήγορη διόρθωση
+            document.getElementById('manualEmployee').value = empName;
+            document.getElementById('manualType').value = 'out';
+            
+            // Default ώρα: 17:00 της ημέρας που έκανε είσοδο
+            const lastIn = getLastClockIn(empName);
+            if (lastIn) {
+                const inDate = new Date(lastIn.timestamp);
+                document.getElementById('manualDate').valueAsDate = inDate;
+                document.getElementById('manualTime').value = '17:00';
+            }
+            
+            document.getElementById('manualReason').value = 'Ξέχασε να χτυπήσει έξοδο';
+            updateManualHelp();
+            showToast('Συμπληρώστε την σωστή ώρα εξόδου', 'info');
+        }
+
+        function updateManualHelp() {
+            const type = document.getElementById('manualType').value;
+            const helpText = document.getElementById('manualHelpText');
+            
+            if (type === 'out') {
+                helpText.innerHTML = '💡 <strong>Έξοδος:</strong> Καταχωρείτε την ώρα που έφυγε ο εργαζόμενος. Πρέπει να υπάρχει προηγούμενη είσοδος.';
+            } else {
+                helpText.innerHTML = '💡 <strong>Είσοδος:</strong> Καταχωρείτε καθυστερημένη είσοδο που δεν χτυπήθηκε εκείνη τη στιγμή.';
+            }
+        }
+
+        function saveManualEntry() {
+            const empName = document.getElementById('manualEmployee').value;
+            const type = document.getElementById('manualType').value;
+            const dateStr = document.getElementById('manualDate').value;
+            const timeStr = document.getElementById('manualTime').value;
+            const reason = document.getElementById('manualReason').value.trim();
+
+            // Validations
+            if (!empName) {
+                showToast('Επιλέξτε εργαζόμενο', 'warning');
+                return;
+            }
+            if (!dateStr || !timeStr) {
+                showToast('Συμπληρώστε ημερομηνία και ώρα', 'warning');
+                return;
+            }
+
+            // Δημιουργία timestamp
+            const manualDate = new Date(dateStr + 'T' + timeStr);
+            const manualTimestamp = manualDate.getTime();
+
+            // Έλεγχος ότι δεν είναι στο μέλλον
+            if (manualTimestamp > Date.now()) {
+                showToast('Η ημερομηνία/ώρα δεν μπορεί να είναι στο μέλλον', 'error');
+                return;
+            }
+
+            // Έλεγχοι ανάλογα με τον τύπο
+            const empRecords = records.filter(r => r.name === empName).sort((a, b) => a.timestamp - b.timestamp);
+            
+            if (type === 'out') {
+                // Πρέπει να υπάρχει προηγούμενη ανοιχτή είσοδος
+                let hasOpenIn = false;
+                let lastInTimestamp = null;
+                
+                for (let i = empRecords.length - 1; i >= 0; i--) {
+                    if (empRecords[i].timestamp >= manualTimestamp) continue;
+                    if (empRecords[i].type === 'in') {
+                        hasOpenIn = true;
+                        lastInTimestamp = empRecords[i].timestamp;
+                        break;
+                    }
+                    if (empRecords[i].type === 'out') break;
+                }
+
+                if (!hasOpenIn) {
+                    showToast('Δεν υπάρχει είσοδος πριν από αυτή την ώρα για ' + empName, 'error', 5000);
+                    return;
+                }
+
+                if (manualTimestamp <= lastInTimestamp) {
+                    showToast('Η έξοδος πρέπει να είναι μετά την είσοδο', 'error');
+                    return;
+                }
+
+                // Έλεγχος ότι δεν παρεμβαίνει σε επόμενο χτύπημα
+                const nextRecord = empRecords.find(r => r.timestamp > lastInTimestamp && r.timestamp < manualTimestamp);
+                if (nextRecord) {
+                    showToast('Υπάρχει ήδη χτύπημα μεταξύ της εισόδου και της προτεινόμενης εξόδου', 'error', 5000);
+                    return;
+                }
+            } else { // type === 'in'
+                // Έλεγχος ότι δεν υπάρχει ανοιχτή είσοδος πριν
+                let hasOpenIn = false;
+                for (let i = 0; i < empRecords.length; i++) {
+                    if (empRecords[i].timestamp >= manualTimestamp) break;
+                    if (empRecords[i].type === 'in') hasOpenIn = true;
+                    if (empRecords[i].type === 'out') hasOpenIn = false;
+                }
+
+                if (hasOpenIn) {
+                    showToast('Ο εργαζόμενος είναι ήδη μέσα. Καταχωρήστε πρώτα την έξοδο.', 'error', 5000);
+                    return;
+                }
+
+                // Έλεγχος ότι δεν παρεμβαίνει σε επόμενη εγγραφή
+                const nextRecord = empRecords.find(r => r.timestamp > manualTimestamp);
+                if (nextRecord && nextRecord.type === 'in') {
+                    // OK, υπάρχει επόμενη είσοδος αλλά δεν συγκρούεται
+                } else if (nextRecord && nextRecord.type === 'out') {
+                    showToast('Υπάρχει ήδη έξοδος μετά. Δεν μπορεί να προστεθεί είσοδος εδώ.', 'error', 5000);
+                    return;
+                }
+            }
+
+            // Καταχώρηση
+            const newRecord = {
+                name: empName,
+                type,
+                timestamp: manualTimestamp,
+                datetime: manualDate.toLocaleString('el-GR'),
+                manual: true,
+                reason: reason || null,
+                addedAt: Date.now()
+            };
+
+            records.push(newRecord);
+            saveData();
+            updateDisplay();
+            closeManualEntry();
+
+            const typeText = type === 'in' ? 'Είσοδος' : 'Έξοδος';
+            showToast(`✅ ${typeText} καταχωρήθηκε για ${empName}`, 'success', 4000);
         }
 
         // ========== ΑΡΧΙΚΟΠΟΙΗΣΗ ==========
