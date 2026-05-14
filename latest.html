@@ -544,6 +544,60 @@
             font-size: 0.75em;
             margin-left: 5px;
         }
+
+        /* ========== HOURLY RATES ========== */
+        .rate-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        .rate-grid.header {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        .rate-input {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.95em;
+            width: 100%;
+        }
+        .rate-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .rate-display {
+            font-weight: 600;
+            color: #27ae60;
+        }
+        .rate-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .btn-save-rate {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        .btn-save-rate:hover { background: #229954; }
+        .btn-save-rate.unsaved {
+            background: #f39c12;
+            animation: pulse-orange 1.5s infinite;
+        }
+        @keyframes pulse-orange {
+            0%, 100% { background: #f39c12; }
+            50% { background: #e67e22; }
+        }
         .progress-bar {
             background: #e0e0e0;
             border-radius: 10px;
@@ -757,12 +811,13 @@
         
         // ========== UPDATE SERVER URL ==========
         const UPDATE_SERVER = "https://nikostam91.github.io/timeclock-updates";
-        const CURRENT_VERSION = "2.2.0";
+        const CURRENT_VERSION = "2.4.1";
         const UPDATE_CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 ώρες
         
         let licenseData = null;
         let records = [];
         let employees = [];
+        let hourlyRates = {}; // { "Όνομα": ωρομίσθιο }
         let selectedEmployee = '';
         let filterFromDate = null;
         let filterToDate = null;
@@ -780,15 +835,30 @@
             ctx.fillText('fingerprint', 2, 15);
             const canvasFP = canvas.toDataURL();
 
+            // Σταθερά χαρακτηριστικά - ΔΕΝ αλλάζουν εύκολα
+            // (Αφαιρέσαμε screen resolution που αλλάζει με νέα οθόνη)
             const data = [
-                navigator.userAgent,
-                navigator.language,
-                screen.width + 'x' + screen.height,
-                screen.colorDepth,
-                new Date().getTimezoneOffset(),
-                navigator.platform,
-                navigator.hardwareConcurrency || 'unknown',
-                canvasFP.substring(0, 100)
+                navigator.userAgent,           // Browser version
+                navigator.language,            // Γλώσσα
+                navigator.platform,            // OS (Windows/Mac/Linux)
+                navigator.hardwareConcurrency || 'unknown',  // CPU cores
+                screen.colorDepth,             // Color depth (σταθερό)
+                canvasFP.substring(0, 100)     // Canvas fingerprint
+            ].join('|');
+
+            const encoder = new TextEncoder();
+            const dataBuf = encoder.encode(data);
+            const hashBuf = await crypto.subtle.digest('SHA-256', dataBuf);
+            const hashArray = Array.from(new Uint8Array(hashBuf));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
+        }
+
+        // Επιπλέον: Generic fallback fingerprint - πιο γενικό
+        async function generateFallbackFingerprint() {
+            const data = [
+                navigator.platform,            // Μόνο OS
+                navigator.language,            // Γλώσσα
+                navigator.hardwareConcurrency || 'unknown'  // CPU cores
             ].join('|');
 
             const encoder = new TextEncoder();
@@ -885,14 +955,16 @@
                 return;
             }
 
-            // Δημιουργία hardware fingerprint
+            // Δημιουργία hardware fingerprint (κύριο + fallback)
             hardwareFingerprint = await generateFingerprint();
+            const fallbackFingerprint = await generateFallbackFingerprint();
 
             // Αποθήκευση license
             const licenseInfo = {
                 key,
                 data,
                 hardwareFingerprint,
+                fallbackFingerprint,
                 activatedAt: Date.now()
             };
             
@@ -920,9 +992,27 @@
                     return false;
                 }
 
-                // Έλεγχος hardware fingerprint
+                // Έλεγχος hardware fingerprint - με grace logic
                 const currentFP = await generateFingerprint();
-                if (currentFP !== licenseData.hardwareFingerprint) {
+                const currentFallbackFP = await generateFallbackFingerprint();
+                
+                // Έλεγχος αν ταιριάζει το κύριο fingerprint
+                let fpMatches = (currentFP === licenseData.hardwareFingerprint);
+                
+                // Αν δεν ταιριάζει, έλεγξε το fallback (γενικός έλεγχος για ίδιο PC)
+                if (!fpMatches && licenseData.fallbackFingerprint) {
+                    if (currentFallbackFP === licenseData.fallbackFingerprint) {
+                        // Ίδιο PC αλλά κάτι μικρό άλλαξε (π.χ. οθόνη, browser update)
+                        // Ενημέρωσε το fingerprint σιωπηλά
+                        console.log('Auto-updating fingerprint (same PC, minor change)');
+                        licenseData.hardwareFingerprint = currentFP;
+                        localStorage.setItem('proLicense', JSON.stringify(licenseData));
+                        fpMatches = true;
+                    }
+                }
+                
+                // Αν ακόμα δεν ταιριάζει - νέος υπολογιστής
+                if (!fpMatches) {
                     showToast('⚠️ Η άδεια ενεργοποιήθηκε σε άλλον υπολογιστή. Χρειάζεται επανενεργοποίηση.', 'error', 8000);
                     localStorage.removeItem('proLicense');
                     return false;
@@ -967,21 +1057,23 @@
         function saveData() {
             localStorage.setItem('timeClockData', JSON.stringify(records));
             localStorage.setItem('employees', JSON.stringify(employees));
+            localStorage.setItem('hourlyRates', JSON.stringify(hourlyRates));
         }
 
         function loadData() {
             records = JSON.parse(localStorage.getItem('timeClockData') || '[]');
             employees = JSON.parse(localStorage.getItem('employees') || '[]');
+            hourlyRates = JSON.parse(localStorage.getItem('hourlyRates') || '{}');
             updateDisplay();
         }
 
         // ========== BACKUP & RESTORE ==========
         function backupData() {
             const backup = {
-                records, employees,
+                records, employees, hourlyRates,
                 exportDate: new Date().toISOString(),
                 company: licenseData.data.cn,
-                version: '2.0-pro'
+                version: '2.3-pro'
             };
             const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
             const link = document.createElement('a');
@@ -1005,6 +1097,7 @@
                     if (confirm('Σίγουρα θέλετε να επαναφέρετε τα δεδομένα; Τα τρέχοντα δεδομένα θα χαθούν!')) {
                         records = backup.records;
                         employees = backup.employees;
+                        hourlyRates = backup.hourlyRates || {};
                         saveData();
                         updateDisplay();
                         showToast('Δεδομένα επαναφέρθηκαν', 'success');
@@ -1171,6 +1264,83 @@
             updateEmployeeCount();
         }
 
+        function updateHourlyRatesTable() {
+            const container = document.getElementById('hourlyRatesContainer');
+            
+            if (employees.length === 0) {
+                container.innerHTML = '<p class="no-data">Δεν έχετε προσθέσει εργαζομένους ακόμα</p>';
+                return;
+            }
+
+            let html = `
+                <div class="rate-grid header">
+                    <div>👤 Εργαζόμενος</div>
+                    <div>💶 Ωρομίσθιο (€/ώρα)</div>
+                    <div></div>
+                </div>
+            `;
+
+            employees.forEach(emp => {
+                const rate = hourlyRates[emp] || '';
+                const escapedEmp = escapeHTML(emp);
+                const empId = 'rate-' + btoa(unescape(encodeURIComponent(emp))).replace(/[^a-zA-Z0-9]/g, '');
+                
+                html += `
+                    <div class="rate-grid">
+                        <div><strong>${escapedEmp}</strong></div>
+                        <div>
+                            <input type="number" step="0.01" min="0" class="rate-input" 
+                                id="${empId}" value="${rate}" 
+                                placeholder="π.χ. 8.50"
+                                oninput="markRateUnsaved('${empId}')"
+                                onkeypress="if(event.key==='Enter') saveHourlyRate('${escapedEmp.replace(/'/g, '&#39;')}', '${empId}')">
+                        </div>
+                        <div>
+                            <button class="btn-save-rate" id="btn-${empId}" 
+                                onclick="saveHourlyRate('${escapedEmp.replace(/'/g, '&#39;')}', '${empId}')">
+                                💾 Αποθήκευση
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function markRateUnsaved(inputId) {
+            const btn = document.getElementById('btn-' + inputId);
+            if (btn) {
+                btn.classList.add('unsaved');
+                btn.textContent = '⚠️ Μη Αποθηκευμένο';
+            }
+        }
+
+        function saveHourlyRate(empName, inputId) {
+            const input = document.getElementById(inputId);
+            const btn = document.getElementById('btn-' + inputId);
+            const value = parseFloat(input.value);
+
+            if (isNaN(value) || value < 0) {
+                showToast('Παρακαλώ εισάγετε έγκυρο ωρομίσθιο', 'warning');
+                return;
+            }
+
+            // Decode το όνομα από HTML entities
+            const decodedName = empName.replace(/&#39;/g, "'");
+            
+            hourlyRates[decodedName] = value;
+            saveData();
+
+            btn.classList.remove('unsaved');
+            btn.textContent = '✓ Αποθηκεύτηκε';
+            setTimeout(() => {
+                btn.textContent = '💾 Αποθήκευση';
+            }, 2000);
+
+            showToast(`Ωρομίσθιο ${value.toFixed(2)}€/ώρα για ${decodedName}`, 'success');
+        }
+
         function updateWorkingNow() {
             const workingDiv = document.getElementById('workingNow');
             const workingList = document.getElementById('workingList');
@@ -1280,28 +1450,259 @@
             document.getElementById('weeklyStats').innerHTML = `<p style="margin-bottom: 10px; color: #666; font-size: 0.9em;"><strong>${label}</strong></p>` + (html || '<div class="no-data">Κανένα δεδομένο</div>');
         }
 
+
         // ========== EXCEL EXPORT ==========
         function exportToExcel() {
             if (records.length === 0) { showToast('Δεν υπάρχουν δεδομένα', 'warning'); return; }
             try {
                 const wb = XLSX.utils.book_new();
                 const companyName = licenseData.data.cn;
+                const today = new Date().toLocaleDateString('el-GR');
+                
+                // Εύρος περιόδου - αν υπάρχει φίλτρο, χρησιμοποιείται
+                let periodStart, periodEnd, periodLabel;
+                if (filterFromDate && filterToDate) {
+                    periodStart = new Date(filterFromDate);
+                    periodEnd = new Date(filterToDate);
+                    periodLabel = `${periodStart.toLocaleDateString('el-GR')} έως ${periodEnd.toLocaleDateString('el-GR')}`;
+                } else {
+                    // Default: από την πρώτη μέχρι την τελευταία εγγραφή
+                    const allTimestamps = records.map(r => r.timestamp).sort((a, b) => a - b);
+                    periodStart = new Date(allTimestamps[0]);
+                    periodStart.setHours(0, 0, 0, 0);
+                    periodEnd = new Date(allTimestamps[allTimestamps.length - 1]);
+                    periodEnd.setHours(23, 59, 59, 999);
+                    periodLabel = `Όλη η περίοδος (${periodStart.toLocaleDateString('el-GR')} έως ${periodEnd.toLocaleDateString('el-GR')})`;
+                }
 
-                // Φύλλο 1: Λεπτομέρειες με header επιχείρησης
+                // Φιλτράρισμα εγγραφών στην περίοδο
+                const filteredRecords = records.filter(r => 
+                    r.timestamp >= periodStart.getTime() && r.timestamp <= periodEnd.getTime()
+                );
+
+                if (filteredRecords.length === 0) {
+                    showToast('Δεν υπάρχουν δεδομένα στην επιλεγμένη περίοδο', 'warning');
+                    return;
+                }
+
+                // Συγκεντρωτικά δεδομένα ανά ημέρα/εργαζόμενο
+                const sorted = [...filteredRecords].sort((a, b) => a.timestamp - b.timestamp);
+                const byDay = {};
+                
+                // Χρησιμοποιούμε όλα τα records για να βρούμε τα ζεύγη in/out, αλλά υπολογίζουμε μόνο στην περίοδο
+                const allSorted = [...records].sort((a, b) => a.timestamp - b.timestamp);
+                allSorted.forEach((rec, idx) => {
+                    if (rec.type === 'out') {
+                        for (let i = idx - 1; i >= 0; i--) {
+                            if (allSorted[i].name === rec.name && allSorted[i].type === 'in') {
+                                const inTime = allSorted[i].timestamp;
+                                const outTime = rec.timestamp;
+                                
+                                // Έλεγχος επικάλυψης με την περίοδο
+                                const effStart = Math.max(inTime, periodStart.getTime());
+                                const effEnd = Math.min(outTime, periodEnd.getTime());
+                                
+                                if (effStart < effEnd) {
+                                    const dateKey = new Date(inTime).toLocaleDateString('el-GR');
+                                    if (!byDay[dateKey]) byDay[dateKey] = {};
+                                    if (!byDay[dateKey][rec.name]) byDay[dateKey][rec.name] = 0;
+                                    byDay[dateKey][rec.name] += (effEnd - effStart) / (1000 * 60 * 60);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                });
+
+                // Σύνολα ανά εργαζόμενο
+                const totals = {};
+                Object.values(byDay).forEach(d => Object.entries(d).forEach(([n, h]) => { totals[n] = (totals[n] || 0) + h; }));
+
+                if (Object.keys(totals).length === 0) {
+                    showToast('Δεν υπάρχουν ολοκληρωμένες βάρδιες στην περίοδο', 'warning');
+                    return;
+                }
+
+                // Λίστα εργαζομένων στην περίοδο
+                const employeesInPeriod = Object.keys(totals).sort((a, b) => a.localeCompare(b, 'el'));
+                const totalHours = Object.values(totals).reduce((a, b) => a + b, 0);
+
+                // ============================================
+                // ΦΥΛΛΟ 1: ΩΡΟΜΙΣΘΙΑ (ΣΥΜΠΛΗΡΩΣΗ ΣΤΟ EXCEL)
+                // ============================================
+                const ratesData = [
+                    ['ΩΡΟΜΙΣΘΙΑ ΕΡΓΑΖΟΜΕΝΩΝ - ΣΥΜΠΛΗΡΩΣΤΕ ΕΔΩ'],
+                    [''],
+                    ['Εταιρεία:', companyName],
+                    ['Περίοδος:', periodLabel],
+                    ['Ημερομηνία:', today],
+                    [''],
+                    ['ΟΔΗΓΙΕΣ:'],
+                    ['1. Συμπληρώστε το ωρομίσθιο για κάθε εργαζόμενο στη στήλη Γ (€/ώρα)'],
+                    ['2. Τα υπόλοιπα φύλλα θα υπολογίσουν αυτόματα τους μισθούς'],
+                    ['3. Αν αλλάξετε κάποιο ωρομίσθιο, ανανεώστε το αρχείο (πατήστε F9)'],
+                    [''],
+                    ['Α/Α', 'Εργαζόμενος', 'Ωρομίσθιο (€/ώρα)', 'Σύνολο Ωρών', 'Καθαρός Μισθός (€)']
+                ];
+
+                let i = 1;
+                const rateStartRow = 13; // Γραμμή που αρχίζουν τα δεδομένα (1-indexed)
+                employeesInPeriod.forEach(emp => {
+                    const hours = totals[emp];
+                    ratesData.push([
+                        i,
+                        emp,
+                        '', // Κενό - θα συμπληρωθεί από τον χρήστη
+                        parseFloat(hours.toFixed(2)),
+                        { f: `IF(C${rateStartRow + i - 1}="","",C${rateStartRow + i - 1}*D${rateStartRow + i - 1})` }
+                    ]);
+                    i++;
+                });
+
+                ratesData.push(['']);
+                // Σύνολο - με formula
+                const lastDataRow = rateStartRow + employeesInPeriod.length - 1;
+                const totalRow = lastDataRow + 2;
+                ratesData.push([
+                    '', 'ΣΥΝΟΛΟ:',
+                    '',
+                    { f: `SUM(D${rateStartRow}:D${lastDataRow})` },
+                    { f: `SUM(E${rateStartRow}:E${lastDataRow})` }
+                ]);
+
+                const ws1 = XLSX.utils.aoa_to_sheet(ratesData);
+                ws1['!cols'] = [{ wch: 6 }, { wch: 28 }, { wch: 22 }, { wch: 15 }, { wch: 22 }];
+                ws1['!merges'] = [
+                    { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }, // Τίτλος
+                    { s: { r: 6, c: 0 }, e: { r: 6, c: 4 } }, // Οδηγίες header
+                    { s: { r: 7, c: 0 }, e: { r: 7, c: 4 } }, // Οδηγία 1
+                    { s: { r: 8, c: 0 }, e: { r: 8, c: 4 } }, // Οδηγία 2
+                    { s: { r: 9, c: 0 }, e: { r: 9, c: 4 } }  // Οδηγία 3
+                ];
+                applyStyles(ws1, ratesData.length, 'rates');
+                XLSX.utils.book_append_sheet(wb, ws1, '💰 Ωρομίσθια');
+
+                // ============================================
+                // ΦΥΛΛΟ 2: ΣΥΝΟΨΗ (Dashboard)
+                // ============================================
+                const summary = [
+                    ['ΣΥΝΟΨΗ ΜΙΣΘΟΔΟΣΙΑΣ'],
+                    [''],
+                    ['Εταιρεία:', companyName],
+                    ['Περίοδος:', periodLabel],
+                    ['Ημερομηνία Εξαγωγής:', today],
+                    [''],
+                    ['📊 ΓΕΝΙΚΑ ΣΤΟΙΧΕΙΑ'],
+                    ['Σύνολο Εργαζομένων:', Object.keys(totals).length],
+                    ['Σύνολο Ωρών:', parseFloat(totalHours.toFixed(2))],
+                    ['Σύνολο Μισθών (καθαρά):', { f: `'💰 Ωρομίσθια'!E${totalRow}` }],
+                    [''],
+                    ['👥 ΣΥΝΟΨΗ ΑΝΑ ΕΡΓΑΖΟΜΕΝΟ'],
+                    ['Α/Α', 'Εργαζόμενος', 'Ώρες', 'Ωρομίσθιο (€)', 'Μισθός (€)']
+                ];
+
+                const summaryStartRow = 14;
+                employeesInPeriod.forEach((name, idx) => {
+                    const rowNum = rateStartRow + idx;
+                    summary.push([
+                        idx + 1,
+                        name,
+                        parseFloat(totals[name].toFixed(2)),
+                        { f: `IF('💰 Ωρομίσθια'!C${rowNum}="","-",'💰 Ωρομίσθια'!C${rowNum})` },
+                        { f: `IF('💰 Ωρομίσθια'!C${rowNum}="","-",'💰 Ωρομίσθια'!C${rowNum}*'💰 Ωρομίσθια'!D${rowNum})` }
+                    ]);
+                });
+
+                const summaryLastRow = summaryStartRow + employeesInPeriod.length - 1;
+                summary.push(['']);
+                summary.push([
+                    '', 'ΣΥΝΟΛΟ',
+                    { f: `SUM(C${summaryStartRow}:C${summaryLastRow})` },
+                    '',
+                    { f: `'💰 Ωρομίσθια'!E${totalRow}` }
+                ]);
+
+                const ws2 = XLSX.utils.aoa_to_sheet(summary);
+                ws2['!cols'] = [{ wch: 6 }, { wch: 28 }, { wch: 12 }, { wch: 18 }, { wch: 18 }];
+                ws2['!merges'] = [
+                    { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
+                    { s: { r: 6, c: 0 }, e: { r: 6, c: 4 } },
+                    { s: { r: 11, c: 0 }, e: { r: 11, c: 4 } }
+                ];
+                applyStyles(ws2, summary.length);
+                XLSX.utils.book_append_sheet(wb, ws2, '📊 Σύνοψη');
+
+                // ============================================
+                // ΦΥΛΛΟ 3: ΩΡΕΣ ΑΝΑ ΗΜΕΡΑ
+                // ============================================
+                const dailyData = [
+                    ['ΩΡΕΣ ΕΡΓΑΣΙΑΣ ΑΝΑ ΗΜΕΡΑ'],
+                    [''],
+                    ['Εταιρεία:', companyName],
+                    ['Περίοδος:', periodLabel],
+                    [''],
+                    ['Ημερομηνία', 'Εργαζόμενος', 'Ώρες', 'Ωρομίσθιο (€)', 'Ημερήσιος Μισθός (€)']
+                ];
+                
+                const dailyStartRow = 7;
+                let dailyRowIdx = 0;
+                
+                Object.keys(byDay).sort((a, b) => {
+                    const [d1, m1, y1] = a.split('/').map(Number);
+                    const [d2, m2, y2] = b.split('/').map(Number);
+                    return new Date(y1, m1-1, d1) - new Date(y2, m2-1, d2);
+                }).forEach(date => {
+                    Object.keys(byDay[date]).sort().forEach(name => {
+                        const hours = byDay[date][name];
+                        const empIdx = employeesInPeriod.indexOf(name);
+                        const rateRow = rateStartRow + empIdx; // Στο φύλλο Ωρομίσθια
+                        
+                        dailyData.push([
+                            date,
+                            name,
+                            parseFloat(hours.toFixed(2)),
+                            { f: `IF('💰 Ωρομίσθια'!C${rateRow}="","-",'💰 Ωρομίσθια'!C${rateRow})` },
+                            { f: `IF('💰 Ωρομίσθια'!C${rateRow}="","-",'💰 Ωρομίσθια'!C${rateRow}*C${dailyStartRow + dailyRowIdx})` }
+                        ]);
+                        dailyRowIdx++;
+                    });
+                });
+
+                const dailyLastRow = dailyStartRow + dailyRowIdx - 1;
+                dailyData.push(['']);
+                dailyData.push([
+                    '', '', 
+                    { f: `SUM(C${dailyStartRow}:C${dailyLastRow})` },
+                    'ΣΥΝΟΛΟ:',
+                    { f: `SUMIF(E${dailyStartRow}:E${dailyLastRow},"<>-")` }
+                ]);
+
+                const ws3 = XLSX.utils.aoa_to_sheet(dailyData);
+                ws3['!cols'] = [{ wch: 15 }, { wch: 25 }, { wch: 12 }, { wch: 18 }, { wch: 22 }];
+                ws3['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }];
+                applyStyles(ws3, dailyData.length);
+                XLSX.utils.book_append_sheet(wb, ws3, '📅 Ώρες ανά Ημέρα');
+
+                // ============================================
+                // ΦΥΛΛΟ 4: ΑΝΑΛΥΤΙΚΕΣ ΚΑΤΑΓΡΑΦΕΣ
+                // ============================================
                 const detail = [
-                    ['Εταιρεία:', companyName, '', '', '', ''],
-                    ['Ημερομηνία Εξαγωγής:', new Date().toLocaleDateString('el-GR'), '', '', '', ''],
-                    ['', '', '', '', '', ''],
+                    ['ΑΝΑΛΥΤΙΚΕΣ ΚΑΤΑΓΡΑΦΕΣ ΧΤΥΠΗΜΑΤΩΝ'],
+                    [''],
+                    ['Εταιρεία:', companyName],
+                    ['Περίοδος:', periodLabel],
+                    ['Ημερομηνία Εξαγωγής:', today],
+                    [''],
                     ['Ημερομηνία/Ώρα', 'Εργαζόμενος', 'Τύπος', 'Διάρκεια (ώρες)', 'Καταχώρηση', 'Αιτιολογία']
                 ];
-                const sorted = [...records].sort((a, b) => a.timestamp - b.timestamp);
+
                 sorted.forEach((rec, idx) => {
-                    const type = rec.type === 'in' ? 'Είσοδος' : 'Έξοδος';
+                    const type = rec.type === 'in' ? '✓ Είσοδος' : '✕ Έξοδος';
                     let dur = '-';
                     if (rec.type === 'out') {
                         for (let i = idx - 1; i >= 0; i--) {
                             if (sorted[i].name === rec.name && sorted[i].type === 'in') {
-                                dur = ((rec.timestamp - sorted[i].timestamp) / (1000 * 60 * 60)).toFixed(2);
+                                dur = parseFloat(((rec.timestamp - sorted[i].timestamp) / (1000 * 60 * 60)).toFixed(2));
                                 break;
                             }
                         }
@@ -1310,64 +1711,123 @@
                     const reason = rec.reason || '';
                     detail.push([rec.datetime, rec.name, type, dur, entryType, reason]);
                 });
-                const ws1 = XLSX.utils.aoa_to_sheet(detail);
-                ws1['!cols'] = [{ wch: 22 }, { wch: 25 }, { wch: 12 }, { wch: 18 }, { wch: 15 }, { wch: 30 }];
-                XLSX.utils.book_append_sheet(wb, ws1, 'Αναλυτικές Καταγραφές');
 
-                // Φύλλο 2: Ώρες ανά Ημέρα
-                const byDay = {};
-                sorted.forEach((rec, idx) => {
-                    if (rec.type === 'out') {
-                        for (let i = idx - 1; i >= 0; i--) {
-                            if (sorted[i].name === rec.name && sorted[i].type === 'in') {
-                                const dateKey = new Date(sorted[i].timestamp).toLocaleDateString('el-GR');
-                                if (!byDay[dateKey]) byDay[dateKey] = {};
-                                if (!byDay[dateKey][rec.name]) byDay[dateKey][rec.name] = 0;
-                                byDay[dateKey][rec.name] += (rec.timestamp - sorted[i].timestamp) / (1000 * 60 * 60);
-                                break;
+                const ws4 = XLSX.utils.aoa_to_sheet(detail);
+                ws4['!cols'] = [{ wch: 22 }, { wch: 25 }, { wch: 14 }, { wch: 16 }, { wch: 15 }, { wch: 30 }];
+                ws4['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }];
+                applyStyles(ws4, detail.length, 'records');
+                XLSX.utils.book_append_sheet(wb, ws4, '📋 Καταγραφές');
+
+                // Αποθήκευση
+                const periodSuffix = filterFromDate && filterToDate ? 
+                    `${periodStart.toLocaleDateString('el-GR').replace(/\//g, '_')}_έως_${periodEnd.toLocaleDateString('el-GR').replace(/\//g, '_')}` :
+                    today.replace(/\//g, '_');
+                const fname = `Μισθοδοσία-${licenseData.data.c}-${periodSuffix}.xlsx`;
+                XLSX.writeFile(wb, fname);
+                
+                showToast('Excel δημιουργήθηκε! Συμπληρώστε τα ωρομίσθια στο πρώτο φύλλο.', 'success', 5000);
+            } catch (e) {
+                console.error(e);
+                showToast('Σφάλμα: ' + e.message, 'error');
+            }
+        }
+
+        // Συνάρτηση εφαρμογής styles σε Excel sheet
+        function applyStyles(ws, rowCount, type = 'default') {
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            
+            for (let R = range.s.r; R <= range.e.r; R++) {
+                for (let C = range.s.c; C <= range.e.c; C++) {
+                    const addr = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!ws[addr]) continue;
+                    
+                    if (!ws[addr].s) ws[addr].s = {};
+
+                    // Title row (πρώτη σειρά)
+                    if (R === 0) {
+                        ws[addr].s = {
+                            font: { bold: true, sz: 16, color: { rgb: 'FFFFFF' } },
+                            fill: { fgColor: { rgb: '667EEA' } },
+                            alignment: { horizontal: 'center', vertical: 'center' }
+                        };
+                    }
+                    // Header rows
+                    else if (ws[addr].v && typeof ws[addr].v === 'string' && 
+                             (ws[addr].v === 'Εργαζόμενος' || ws[addr].v === 'Ημερομηνία' || 
+                              ws[addr].v === 'Α/Α' || ws[addr].v === 'Ημερομηνία/Ώρα')) {
+                        for (let c = range.s.c; c <= range.e.c; c++) {
+                            const a = XLSX.utils.encode_cell({ r: R, c: c });
+                            if (!ws[a]) ws[a] = { v: '' };
+                            ws[a].s = {
+                                font: { bold: true, color: { rgb: 'FFFFFF' } },
+                                fill: { fgColor: { rgb: '764BA2' } },
+                                alignment: { horizontal: 'center' },
+                                border: {
+                                    top: { style: 'thin', color: { rgb: '000000' } },
+                                    bottom: { style: 'thin', color: { rgb: '000000' } },
+                                    left: { style: 'thin', color: { rgb: '000000' } },
+                                    right: { style: 'thin', color: { rgb: '000000' } }
+                                }
+                            };
+                        }
+                    }
+                    // Section headers
+                    else if (ws[addr].v && typeof ws[addr].v === 'string' && 
+                             (ws[addr].v.includes('📊') || ws[addr].v.includes('👥') || ws[addr].v === 'ΟΔΗΓΙΕΣ:')) {
+                        ws[addr].s = {
+                            font: { bold: true, sz: 12, color: { rgb: '667EEA' } },
+                            alignment: { horizontal: 'left' }
+                        };
+                    }
+                    // ΣΥΝΟΛΟ row
+                    else if (ws[addr].v === 'ΣΥΝΟΛΟ' || ws[addr].v === 'ΣΥΝΟΛΟ:') {
+                        for (let c = range.s.c; c <= range.e.c; c++) {
+                            const a = XLSX.utils.encode_cell({ r: R, c: c });
+                            if (!ws[a]) ws[a] = { v: '' };
+                            ws[a].s = {
+                                font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
+                                fill: { fgColor: { rgb: '27AE60' } },
+                                alignment: { horizontal: 'center' }
+                            };
+                        }
+                    }
+                    // Στήλη Ωρομισθίου στο φύλλο "Ωρομίσθια" - special highlight
+                    else if (type === 'rates' && C === 2 && R >= 12 && R <= 12 + rowCount) {
+                        ws[addr].s = {
+                            fill: { fgColor: { rgb: 'FFF9E6' } },
+                            border: {
+                                top: { style: 'thin', color: { rgb: 'F39C12' } },
+                                bottom: { style: 'thin', color: { rgb: 'F39C12' } },
+                                left: { style: 'thin', color: { rgb: 'F39C12' } },
+                                right: { style: 'thin', color: { rgb: 'F39C12' } }
+                            },
+                            alignment: { horizontal: 'right' }
+                        };
+                    }
+                    // Labels
+                    else if (ws[addr].v && typeof ws[addr].v === 'string' && ws[addr].v.endsWith(':')) {
+                        ws[addr].s = {
+                            font: { bold: true, color: { rgb: '333333' } },
+                            alignment: { horizontal: 'left' }
+                        };
+                    }
+                    // Κανονικά κελιά
+                    else if (R > 0) {
+                        if (!ws[addr].s.alignment) {
+                            ws[addr].s.alignment = { horizontal: typeof ws[addr].v === 'number' ? 'right' : 'left' };
+                        }
+                        if (R > 5 && R % 2 === 0) {
+                            if (!ws[addr].s.fill) {
+                                ws[addr].s.fill = { fgColor: { rgb: 'F8F9FA' } };
                             }
                         }
                     }
-                });
-                const dailyData = [
-                    ['Εταιρεία:', companyName, ''],
-                    ['', '', ''],
-                    ['Ημερομηνία', 'Εργαζόμενος', 'Σύνολο Ωρών']
-                ];
-                Object.keys(byDay).sort((a, b) => {
-                    const [d1, m1, y1] = a.split('/').map(Number);
-                    const [d2, m2, y2] = b.split('/').map(Number);
-                    return new Date(y1, m1-1, d1) - new Date(y2, m2-1, d2);
-                }).forEach(date => {
-                    Object.keys(byDay[date]).sort().forEach(name => {
-                        dailyData.push([date, name, byDay[date][name].toFixed(2)]);
-                    });
-                });
-                const ws2 = XLSX.utils.aoa_to_sheet(dailyData);
-                ws2['!cols'] = [{ wch: 15 }, { wch: 25 }, { wch: 15 }];
-                XLSX.utils.book_append_sheet(wb, ws2, 'Ώρες ανά Ημέρα');
-
-                // Φύλλο 3: Σύνολο
-                const totals = {};
-                Object.values(byDay).forEach(d => Object.entries(d).forEach(([n, h]) => { totals[n] = (totals[n] || 0) + h; }));
-                const totalData = [
-                    ['Εταιρεία:', companyName, ''],
-                    ['', '', ''],
-                    ['Εργαζόμενος', 'Σύνολο Ωρών', 'Κατάσταση']
-                ];
-                Object.entries(totals).sort((a, b) => b[1] - a[1]).forEach(([n, h]) => {
-                    totalData.push([n, h.toFixed(2), isCurrentlyWorking(n) ? 'Εντός Εργασίας' : 'Εκτός']);
-                });
-                const ws3 = XLSX.utils.aoa_to_sheet(totalData);
-                ws3['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 18 }];
-                XLSX.utils.book_append_sheet(wb, ws3, 'Σύνολο');
-
-                const fname = `${licenseData.data.c}-${new Date().toLocaleDateString('el-GR').replace(/\//g, '_')}.xlsx`;
-                XLSX.writeFile(wb, fname);
-                showToast('Excel δημιουργήθηκε', 'success');
-            } catch (e) {
-                showToast('Σφάλμα: ' + e.message, 'error');
+                }
             }
+
+            // Ύψος γραμμών
+            ws['!rows'] = [];
+            ws['!rows'][0] = { hpt: 30 };
         }
 
         // ========== UPDATE SYSTEM ==========

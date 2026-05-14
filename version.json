@@ -1,5 +1,5 @@
 {
-  "version": "2.2.0",
+  "version": "2.4.1",
   "releaseDate": "2026-05-13",
   "minimumVersion": "1.0.0",
   "updateUrl": "https://nikostam91.github.io/timeclock-updates/latest.html",
@@ -8,9 +8,9 @@
   "checkUrl": "https://nikostam91.github.io/timeclock-updates/check.html",
   "isCritical": false,
   "changelog": [
-    "🔄 Χειροκίνητος έλεγχος ενημερώσεων (κουμπί)",
-    "🌐 Νέα σελίδα ελέγχου ενημερώσεων online",
-    "🔧 Βελτιωμένη συμβατότητα για άνοιγμα από αρχείο",
-    "💡 Καλύτερες οδηγίες αναβάθμισης"
+    "🔧 Διόρθωση: Δεν ζητάει re-activation με αλλαγή οθόνης/ανάλυσης",
+    "🧠 Έξυπνο fingerprint - αντέχει σε μικρές αλλαγές υλικού",
+    "🔄 Αυτόματη ενημέρωση fingerprint όταν αλλάζει κάτι μικρό",
+    "✨ Πιο σταθερή εμπειρία χρήσης"
   ]
 }
